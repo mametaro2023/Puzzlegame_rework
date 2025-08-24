@@ -177,18 +177,14 @@ namespace MyPuzzleGame.Rendering
                     float blockVisualY = mino.VisualY - (mino.Blocks.Length - 1 - i);
                     float pixelY = _field.Y + blockVisualY * Core.GameConfig.BlockSize;
 
-                    // Only render the block if it's within the visible field area
-                    if (pixelY >= _field.Y - Core.GameConfig.BlockSize) // Allow rendering one block above the field
+                    if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
                     {
-                        if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
-                        {
-                            _gpuRenderer.RenderBlock(pixelX, (int)pixelY, Core.GameConfig.BlockSize, gpuColors.Main);
-                        }
-                        else
-                        {
-                            // Fallback for CPU rendering (will not be smooth)
-                            _blockRenderer.RenderBlock(mino.X, (int)Math.Round(blockVisualY), block.Type);
-                        }
+                        _gpuRenderer.RenderBlock(pixelX, (int)pixelY, Core.GameConfig.BlockSize, gpuColors.Main);
+                    }
+                    else
+                    {
+                        // Fallback for CPU rendering (will not be smooth)
+                        _blockRenderer.RenderBlock(mino.X, (int)Math.Round(blockVisualY), block.Type);
                     }
                 }
             }

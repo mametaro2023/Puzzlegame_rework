@@ -28,3 +28,4 @@ D:\my_program\realPgame\MyPuzzleGame\obj\Debug\net9.0\refint\MyPuzzleGame.dll
 D:\my_program\realPgame\MyPuzzleGame\obj\Debug\net9.0\MyPuzzleGame.pdb
 D:\my_program\realPgame\MyPuzzleGame\obj\Debug\net9.0\MyPuzzleGame.genruntimeconfig.cache
 D:\my_program\realPgame\MyPuzzleGame\obj\Debug\net9.0\ref\MyPuzzleGame.dll
+D:\my_program\realPgame\MyPuzzleGame\obj\Debug\net9.0\MyPuzzleGame.sourcelink.json

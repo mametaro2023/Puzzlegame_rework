@@ -18,9 +18,9 @@ namespace MyPuzzleGame
                 var nativeWindowSettings = new NativeWindowSettings()
                 {
                     ClientSize = (Core.GameConfig.WindowWidth, Core.GameConfig.WindowHeight),
-                    Title = "My Puzzle Game",
-                    Profile = ContextProfile.Compatability,
-                    Vsync = VSyncMode.Off
+                    Title = Core.GameConfig.WindowTitle,
+                    Profile = Core.GameConfig.GLProfile,
+                    Vsync = Core.GameConfig.DefaultVSyncMode
                 };
 
                 using (var game = new Game(gameWindowSettings, nativeWindowSettings))

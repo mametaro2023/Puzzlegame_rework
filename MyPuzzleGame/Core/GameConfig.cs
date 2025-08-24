@@ -1,10 +1,18 @@
+using OpenTK.Windowing.Common;
+using System.Drawing;
+
 namespace MyPuzzleGame.Core
 {
     public static class GameConfig
     {
-        // Window Dimensions
+        // Window Settings
+        public const string WindowTitle = "My Puzzle Game";
         public const int WindowWidth = 1280;
         public const int WindowHeight = 720;
+        public const int TargetFPS = 1000;
+        public static readonly Color BackgroundColor = Color.CornflowerBlue;
+        public const VSyncMode DefaultVSyncMode = VSyncMode.Off;
+        public const ContextProfile GLProfile = ContextProfile.Compatability;
         
         // Field Dimensions
         public const int FieldWidth = 8;
