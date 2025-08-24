@@ -105,7 +105,7 @@ namespace MyPuzzleGame
             // Update game logic here, driven by the main loop
             _gameLogic?.Update(e.Time * 1000.0); // e.Time is in seconds, logic uses milliseconds
 
-            _inputHandler?.HandleInput(KeyboardState);
+            _inputHandler?.HandleInput(KeyboardState, e.Time * 1000.0);
             UpdateFPS(e.Time);
         }
 
