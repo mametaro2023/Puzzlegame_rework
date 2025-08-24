@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build)",
+      "Bash(MyPuzzleGame.exe)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet build:*)",
+      "Bash(.MyPuzzleGame.exe)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(sed:*)",
+      "Bash(timeout:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
