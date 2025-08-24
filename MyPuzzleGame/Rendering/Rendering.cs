@@ -58,7 +58,7 @@ namespace MyPuzzleGame.Rendering
             try
             {
                 int pixelX = _field.X + gridX * Core.GameConfig.BlockSize;
-                int pixelY = (int)(_field.Y + visualY * Core.GameConfig.BlockSize);
+                int pixelY = (int)Math.Round(_field.Y + visualY * Core.GameConfig.BlockSize);
 
                 if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(blockType, out var gpuColors))
                 {
@@ -95,51 +95,19 @@ namespace MyPuzzleGame.Rendering
 
         private static void RenderBlockHighlight(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
-            int size = Core.GameConfig.BlockSize;
-            int highlightSize = size / 4;
-            int margin = 2;
-            
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Light);
-            GL.Vertex2(x + margin, y + margin);
-            GL.Vertex2(x + size - margin, y + margin);
-            GL.Vertex2(x + margin, y + highlightSize);
-            GL.End();
-
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Light);
-            GL.Vertex2(x + margin, y + margin);
-            GL.Vertex2(x + highlightSize, y + size - margin);
-            GL.Vertex2(x + margin, y + size - margin);
-            GL.End();
+            // Disabled for flat design
         }
 
         private static void RenderBlockShadow(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
-            int size = Core.GameConfig.BlockSize;
-            int shadowSize = size / 4;
-            int margin = 2;
-            
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Dark);
-            GL.Vertex2(x + size - margin, y + size - margin);
-            GL.Vertex2(x + size - shadowSize, y + margin);
-            GL.Vertex2(x + size - margin, y + margin);
-            GL.End();
-
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Dark);
-            GL.Vertex2(x + size - margin, y + size - margin);
-            GL.Vertex2(x + margin, y + size - shadowSize);
-            GL.Vertex2(x + margin, y + size - margin);
-            GL.End();
+            // Disabled for flat design
         }
 
         private static void RenderBlockBorder(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
             int size = Core.GameConfig.BlockSize;
             
-            GL.Color3(Color.FromArgb(100, 100, 100));
+            GL.Color3(Color.FromArgb(96, 96, 96));
             GL.LineWidth(1.0f);
             GL.Begin(PrimitiveType.LineLoop);
             GL.Vertex2(x + 1, y + 1);
@@ -213,7 +181,7 @@ namespace MyPuzzleGame.Rendering
 
                     if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
                     {
-                        _gpuRenderer.RenderBlock(pixelX, (int)pixelY, Core.GameConfig.BlockSize, gpuColors.Main);
+                        _gpuRenderer.RenderBlock(pixelX, (int)Math.Round(pixelY), Core.GameConfig.BlockSize, gpuColors.Main);
                     }
                     else
                     {
@@ -230,14 +198,14 @@ namespace MyPuzzleGame.Rendering
 
         private void RenderBackground()
         {
-            _gpuRenderer?.RenderQuad(_field.X, _field.Y, _field.Width, _field.Height, new Vector3(0.5f, 0.5f, 0.5f));
+            _gpuRenderer?.RenderQuad(_field.X, _field.Y, _field.Width, _field.Height, new Vector3(44f / 255f, 44f / 255f, 44f / 255f));
         }
 
         private void RenderGrid()
         {
             if (_gpuRenderer == null) return;
 
-            var gridColor = new Vector3(0.3f, 0.3f, 0.3f);
+            var gridColor = new Vector3(64f / 255f, 64f / 255f, 64f / 255f);
             const int lineWidth = 1;
 
             // Vertical lines
