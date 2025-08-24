@@ -13,13 +13,14 @@ namespace MyPuzzleGame.Logic
             MinoFalling,
             MinoLocked,
             MatchCheck, 
-            BlocksFalling,
+            BlocksAnimating,
             Spawning
         }
 
         private readonly GameField _gameField;
         private readonly Random _random = new();
         private readonly object _stateLock = new();
+        private readonly List<AnimatingBlock> _fallingBlocks = new();
         
         private GameState _currentState = GameState.Spawning;
         private double _stateTimer = 0.0;
@@ -54,6 +55,15 @@ namespace MyPuzzleGame.Logic
             }
         }
 
+        public IEnumerable<AnimatingBlock> GetFallingBlocks()
+        {
+            lock (_stateLock)
+            {
+                // Return a copy to prevent modification outside of the lock
+                return new List<AnimatingBlock>(_fallingBlocks);
+            }
+        }
+
         public void Update(double deltaTime)
         {
             lock (_stateLock)
@@ -76,8 +86,16 @@ namespace MyPuzzleGame.Logic
                             if (matches.Count > 0)
                             {
                                 ClearBlocks(matches);
-                                _stateTimer = 500.0; // Wait for gravity
-                                _currentState = GameState.BlocksFalling;
+                                StartGravityAnimation();
+                                if (_fallingBlocks.Count > 0)
+                                {
+                                    _currentState = GameState.BlocksAnimating;
+                                }
+                                else
+                                {
+                                    _stateTimer = 500.0;
+                                    _currentState = GameState.MatchCheck;
+                                }
                             }
                             else
                             {
@@ -86,11 +104,11 @@ namespace MyPuzzleGame.Logic
                             }
                         }
                         break;
-                    case GameState.BlocksFalling:
-                        if (_stateTimer <= 0)
+                    case GameState.BlocksAnimating:
+                        UpdateFallingBlocks((float)deltaTime / 1000f);
+                        if (_fallingBlocks.Count == 0)
                         {
-                            ApplyGravity();
-                            _stateTimer = 500.0; // Wait before next match check
+                            _stateTimer = 500.0;
                             _currentState = GameState.MatchCheck;
                         }
                         break;
@@ -234,8 +252,24 @@ namespace MyPuzzleGame.Logic
             }
         }
 
-        private void ApplyGravity()
+        private void UpdateFallingBlocks(float deltaTimeInSeconds)
         {
+            for (int i = _fallingBlocks.Count - 1; i >= 0; i--)
+            {
+                var block = _fallingBlocks[i];
+                if (block.Update(deltaTimeInSeconds))
+                {
+                    // Animation finished, place block in grid
+                    _gameField.SetBlock(block.X, (int)block.EndY, block.Block);
+                    _fallingBlocks.RemoveAt(i);
+                }
+            }
+        }
+
+        private void StartGravityAnimation()
+        {
+            const float animationDuration = 0.5f; // 500ms animation
+
             for (int x = 0; x < Core.GameConfig.FieldWidth; x++)
             {
                 int emptyRow = Core.GameConfig.FieldHeight - 1;
@@ -246,14 +280,17 @@ namespace MyPuzzleGame.Logic
                     {
                         if (y != emptyRow)
                         {
-                            _gameField.SetBlock(x, emptyRow, block);
-                            _gameField.SetBlock(x, y, null);
+                            // This block needs to fall
+                            _fallingBlocks.Add(new AnimatingBlock(block, x, y, emptyRow, animationDuration));
+                            _gameField.SetBlock(x, y, null); // Remove from original position
                         }
                         emptyRow--;
                     }
                 }
             }
         }
+
+        
 
         private void SpawnMino()
         {

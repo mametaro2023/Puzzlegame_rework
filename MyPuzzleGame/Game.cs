@@ -8,6 +8,7 @@ using MyPuzzleGame.Entities;
 using MyPuzzleGame.Logic;
 using MyPuzzleGame.Rendering;
 using MyPuzzleGame.SystemUtils;
+using System.Linq;
 
 namespace MyPuzzleGame
 {
@@ -166,8 +167,13 @@ namespace MyPuzzleGame
 
             lock (_renderLock)
             {
-                _fieldRenderer?.RenderField();
+                // Get the list of falling blocks from the logic
+                var fallingBlocks = _gameLogic?.GetFallingBlocks() ?? Enumerable.Empty<AnimatingBlock>();
+
+                // Render the field and the falling blocks
+                _fieldRenderer?.RenderField(fallingBlocks);
                 
+                // Render the currently controlled mino
                 var currentMino = _gameLogic?.GetCurrentMino();
                 if (currentMino != null)
                 {
