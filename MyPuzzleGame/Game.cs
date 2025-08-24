@@ -8,6 +8,7 @@ using MyPuzzleGame.Entities;
 using MyPuzzleGame.Logic;
 using MyPuzzleGame.Rendering;
 using MyPuzzleGame.SystemUtils;
+using System.Linq;
 
 namespace MyPuzzleGame
 {
@@ -19,13 +20,13 @@ namespace MyPuzzleGame
         private GPURenderer? _gpuRenderer;
         private readonly object _renderLock = new();
         private bool _initialized = false;
-        private bool _wasDownPressed = false;
+        private InputHandler? _inputHandler;
         
         // FPS and frame limiting
         private int _frameCount = 0;
         private double _fpsUpdateTimer = 0.0;
         private double _currentFPS = 0.0;
-        private readonly double _targetFrameTime = 1.0 / 1000.0; // Target 1000 FPS
+        private readonly double _targetFrameTime = 1.0 / GameConfig.TargetFPS;
         
         // High precision frame limiting with minimal CPU usage
         private readonly Stopwatch _frameTimer = new();
@@ -104,7 +105,7 @@ namespace MyPuzzleGame
             // Update game logic here, driven by the main loop
             _gameLogic?.Update(e.Time * 1000.0); // e.Time is in seconds, logic uses milliseconds
 
-            HandleInput();
+            _inputHandler?.HandleInput(KeyboardState);
             UpdateFPS(e.Time);
         }
 
@@ -129,7 +130,7 @@ namespace MyPuzzleGame
 
         private void InitializeOpenGL()
         {
-            GL.ClearColor(System.Drawing.Color.CornflowerBlue);
+            GL.ClearColor(GameConfig.BackgroundColor);
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
             
@@ -155,6 +156,7 @@ namespace MyPuzzleGame
             _gameLogic = new GameLogic(_gameField);
             
             _gameLogic.Start();
+            _inputHandler = new InputHandler(_gameLogic);
             
             Console.WriteLine("High-performance GPU rendering initialized with custom frame limiter.");
         }
@@ -165,8 +167,13 @@ namespace MyPuzzleGame
 
             lock (_renderLock)
             {
-                _fieldRenderer?.RenderField();
+                // Get the list of falling blocks from the logic
+                var fallingBlocks = _gameLogic?.GetFallingBlocks() ?? Enumerable.Empty<AnimatingBlock>();
+
+                // Render the field and the falling blocks
+                _fieldRenderer?.RenderField(fallingBlocks);
                 
+                // Render the currently controlled mino
                 var currentMino = _gameLogic?.GetCurrentMino();
                 if (currentMino != null)
                 {
@@ -189,54 +196,13 @@ namespace MyPuzzleGame
             if (_fpsUpdateTimer >= 1.0)
             {
                 _currentFPS = _frameCount / _fpsUpdateTimer;
-                Title = $"My Puzzle Game - {_currentFPS:F0} FPS";
+                Title = $"{GameConfig.WindowTitle} - {_currentFPS:F0} FPS";
                 _frameCount = 0;
                 _fpsUpdateTimer = 0.0;
             }
         }
 
-        private void HandleInput()
-        {
-            if (_gameLogic == null) return;
-
-            try
-            {
-                var keyboardState = KeyboardState;
-
-                if (keyboardState.IsKeyPressed(Keys.Left))
-                {
-                    _gameLogic.MoveMino(-1, 0);
-                }
-                if (keyboardState.IsKeyPressed(Keys.Right))
-                {
-                    _gameLogic.MoveMino(1, 0);
-                }
-                if (keyboardState.IsKeyPressed(Keys.Up))
-                {
-                    _gameLogic.RotateMino();
-                }
-                if (keyboardState.IsKeyPressed(Keys.Space))
-                {
-                    _gameLogic.HardDrop();
-                }
-                
-                bool isDownPressed = keyboardState.IsKeyDown(Keys.Down);
-                if (isDownPressed && !_wasDownPressed)
-                {
-                    _gameLogic.StartSoftDrop();
-                }
-                else if (!isDownPressed && _wasDownPressed)
-                { 
-                    _gameLogic.StopSoftDrop();
-                }
-                
-                _wasDownPressed = isDownPressed;
-            }
-            catch (Exception ex)
-            { 
-                HandleError("input handling", ex);
-            }
-        }
+        
 
         private void MinimalCpuFrameLimit()
         {
