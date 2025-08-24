@@ -1,1 +1,11 @@
-bin/
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio files
+.vs/
+*.user
+*.suo
+
+# Tool-specific folders
+.claude/
