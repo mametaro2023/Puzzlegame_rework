@@ -171,9 +171,8 @@ out vec4 FragColor;
 
 void main()
 {
-    // Create gradient effect based on UV coordinates
-    float gradient = 1.0 - (TexCoord.x * 0.2 + TexCoord.y * 0.2);
-    vec3 finalColor = uColor * (uBrightness * gradient);
+    // Flat color
+    vec3 finalColor = uColor * uBrightness;
     FragColor = vec4(finalColor, 1.0);
 }";
 
@@ -303,38 +302,16 @@ void main()
 
     public static class GPUBlockColors
     {
+        // New stylish, flat color palette
         public static readonly Dictionary<Core.BlockType, (Vector3 Main, Vector3 Light, Vector3 Dark)> Colors = new()
         {
-            [Core.BlockType.Red] = (
-                new Vector3(220f/255f, 20f/255f, 60f/255f),
-                new Vector3(255f/255f, 99f/255f, 132f/255f),
-                new Vector3(139f/255f, 0f/255f, 0f/255f)
-            ),
-            [Core.BlockType.Green] = (
-                new Vector3(34f/255f, 139f/255f, 34f/255f),
-                new Vector3(144f/255f, 238f/255f, 144f/255f),
-                new Vector3(0f/255f, 100f/255f, 0f/255f)
-            ),
-            [Core.BlockType.Blue] = (
-                new Vector3(30f/255f, 144f/255f, 255f/255f),
-                new Vector3(135f/255f, 206f/255f, 250f/255f),
-                new Vector3(0f/255f, 0f/255f, 139f/255f)
-            ),
-            [Core.BlockType.Yellow] = (
-                new Vector3(255f/255f, 215f/255f, 0f/255f),
-                new Vector3(255f/255f, 255f/255f, 224f/255f),
-                new Vector3(184f/255f, 134f/255f, 11f/255f)
-            ),
-            [Core.BlockType.Purple] = (
-                new Vector3(147f/255f, 112f/255f, 219f/255f),
-                new Vector3(221f/255f, 160f/255f, 221f/255f),
-                new Vector3(75f/255f, 0f/255f, 130f/255f)
-            ),
-            [Core.BlockType.Orange] = (
-                new Vector3(255f/255f, 140f/255f, 0f/255f),
-                new Vector3(255f/255f, 218f/255f, 185f/255f),
-                new Vector3(205f/255f, 92f/255f, 92f/255f)
-            )
+            // Main, Light, and Dark are the same for a flat look.
+            [Core.BlockType.Red] = (new Vector3(255f/255f, 59f/255f, 48f/255f), new Vector3(255f/255f, 59f/255f, 48f/255f), new Vector3(255f/255f, 59f/255f, 48f/255f)),
+            [Core.BlockType.Green] = (new Vector3(52f/255f, 199f/255f, 89f/255f), new Vector3(52f/255f, 199f/255f, 89f/255f), new Vector3(52f/255f, 199f/255f, 89f/255f)),
+            [Core.BlockType.Blue] = (new Vector3(0f/255f, 122f/255f, 255f/255f), new Vector3(0f/255f, 122f/255f, 255f/255f), new Vector3(0f/255f, 122f/255f, 255f/255f)),
+            [Core.BlockType.Yellow] = (new Vector3(255f/255f, 204f/255f, 0f/255f), new Vector3(255f/255f, 204f/255f, 0f/255f), new Vector3(255f/255f, 204f/255f, 0f/255f)),
+            [Core.BlockType.Purple] = (new Vector3(175f/255f, 82f/255f, 222f/255f), new Vector3(175f/255f, 82f/255f, 222f/255f), new Vector3(175f/255f, 82f/255f, 222f/255f)),
+            [Core.BlockType.Orange] = (new Vector3(255f/255f, 149f/255f, 0f/255f), new Vector3(255f/255f, 149f/255f, 0f/255f), new Vector3(255f/255f, 149f/255f, 0f/255f))
         };
     }
 }

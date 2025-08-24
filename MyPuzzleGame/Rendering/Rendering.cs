@@ -51,6 +51,34 @@ namespace MyPuzzleGame.Rendering
             }
         }
 
+        public void RenderFloatingBlock(int gridX, float visualY, Core.BlockType blockType)
+        {
+            if (blockType == Core.BlockType.None) return;
+
+            try
+            {
+                int pixelX = _field.X + gridX * Core.GameConfig.BlockSize;
+                int pixelY = (int)Math.Round(_field.Y + visualY * Core.GameConfig.BlockSize);
+
+                if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(blockType, out var gpuColors))
+                {
+                    _gpuRenderer.RenderBlock(pixelX, pixelY, Core.GameConfig.BlockSize, gpuColors.Main);
+                }
+                else if (BlockColors.Colors.TryGetValue(blockType, out var colors))
+                {
+                    // Fallback to CPU rendering
+                    RenderBlockBackground(pixelX, pixelY, colors);
+                    RenderBlockHighlight(pixelX, pixelY, colors);
+                    RenderBlockShadow(pixelX, pixelY, colors);
+                    RenderBlockBorder(pixelX, pixelY, colors);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error rendering floating block at ({gridX}, {visualY}): {ex.Message}");
+            }
+        }
+
         private static void RenderBlockBackground(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
             int size = Core.GameConfig.BlockSize;
@@ -67,51 +95,19 @@ namespace MyPuzzleGame.Rendering
 
         private static void RenderBlockHighlight(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
-            int size = Core.GameConfig.BlockSize;
-            int highlightSize = size / 4;
-            int margin = 2;
-            
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Light);
-            GL.Vertex2(x + margin, y + margin);
-            GL.Vertex2(x + size - margin, y + margin);
-            GL.Vertex2(x + margin, y + highlightSize);
-            GL.End();
-
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Light);
-            GL.Vertex2(x + margin, y + margin);
-            GL.Vertex2(x + highlightSize, y + size - margin);
-            GL.Vertex2(x + margin, y + size - margin);
-            GL.End();
+            // Disabled for flat design
         }
 
         private static void RenderBlockShadow(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
-            int size = Core.GameConfig.BlockSize;
-            int shadowSize = size / 4;
-            int margin = 2;
-            
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Dark);
-            GL.Vertex2(x + size - margin, y + size - margin);
-            GL.Vertex2(x + size - shadowSize, y + margin);
-            GL.Vertex2(x + size - margin, y + margin);
-            GL.End();
-
-            GL.Begin(PrimitiveType.Triangles);
-            GL.Color3(colors.Dark);
-            GL.Vertex2(x + size - margin, y + size - margin);
-            GL.Vertex2(x + margin, y + size - shadowSize);
-            GL.Vertex2(x + margin, y + size - margin);
-            GL.End();
+            // Disabled for flat design
         }
 
         private static void RenderBlockBorder(int x, int y, (Color Main, Color Light, Color Dark) colors)
         {
             int size = Core.GameConfig.BlockSize;
             
-            GL.Color3(Color.FromArgb(100, 100, 100));
+            GL.Color3(Color.FromArgb(96, 96, 96));
             GL.LineWidth(1.0f);
             GL.Begin(PrimitiveType.LineLoop);
             GL.Vertex2(x + 1, y + 1);
@@ -141,7 +137,7 @@ namespace MyPuzzleGame.Rendering
             _blockRenderer.SetGPURenderer(gpuRenderer);
         }
 
-        public void RenderField()
+        public void RenderField(IEnumerable<AnimatingBlock> fallingBlocks)
         {
             try
             {
@@ -151,6 +147,12 @@ namespace MyPuzzleGame.Rendering
                 
                 // Only render blocks that exist to minimize processing
                 RenderBlocks();
+
+                // Render animating blocks
+                foreach (var block in fallingBlocks)
+                {
+                    _blockRenderer.RenderFloatingBlock(block.X, block.VisualY, block.Block.Type);
+                }
             }
             catch (Exception ex)
             {
@@ -177,18 +179,14 @@ namespace MyPuzzleGame.Rendering
                     float blockVisualY = mino.VisualY - (mino.Blocks.Length - 1 - i);
                     float pixelY = _field.Y + blockVisualY * Core.GameConfig.BlockSize;
 
-                    // Only render the block if it's within the visible field area
-                    if (pixelY >= _field.Y - Core.GameConfig.BlockSize) // Allow rendering one block above the field
+                    if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
                     {
-                        if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
-                        {
-                            _gpuRenderer.RenderBlock(pixelX, (int)pixelY, Core.GameConfig.BlockSize, gpuColors.Main);
-                        }
-                        else
-                        {
-                            // Fallback for CPU rendering (will not be smooth)
-                            _blockRenderer.RenderBlock(mino.X, (int)Math.Round(blockVisualY), block.Type);
-                        }
+                        _gpuRenderer.RenderBlock(pixelX, (int)Math.Round(pixelY), Core.GameConfig.BlockSize, gpuColors.Main);
+                    }
+                    else
+                    {
+                        // Fallback for CPU rendering (will not be smooth)
+                        _blockRenderer.RenderBlock(mino.X, (int)Math.Round(blockVisualY), block.Type);
                     }
                 }
             }
@@ -200,14 +198,14 @@ namespace MyPuzzleGame.Rendering
 
         private void RenderBackground()
         {
-            _gpuRenderer?.RenderQuad(_field.X, _field.Y, _field.Width, _field.Height, new Vector3(0.5f, 0.5f, 0.5f));
+            _gpuRenderer?.RenderQuad(_field.X, _field.Y, _field.Width, _field.Height, new Vector3(44f / 255f, 44f / 255f, 44f / 255f));
         }
 
         private void RenderGrid()
         {
             if (_gpuRenderer == null) return;
 
-            var gridColor = new Vector3(0.3f, 0.3f, 0.3f);
+            var gridColor = new Vector3(64f / 255f, 64f / 255f, 64f / 255f);
             const int lineWidth = 1;
 
             // Vertical lines
