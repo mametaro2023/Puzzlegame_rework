@@ -277,7 +277,7 @@ namespace MyPuzzleGame.Logic
             lock (_stateLock)
             {
                 if (_currentState != GameState.MinoFalling) return;
-                if (TryMoveMino(deltaX, deltaY) && _currentMino != null) _currentMino.VisualY = _currentMino.LogicalY;
+                TryMoveMino(deltaX, deltaY);
             }
         }
 
@@ -287,7 +287,6 @@ namespace MyPuzzleGame.Logic
             {
                 if (_currentState != GameState.MinoFalling || _currentMino == null) return;
                 _currentMino.RotateUp();
-                _currentMino.VisualY = _currentMino.LogicalY;
             }
         }
 
