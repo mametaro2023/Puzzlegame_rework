@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\my_program\\realPgame\\MyPuzzleGame\\MyPuzzleGame.csproj": {}
+    "F:\\AIフォルダ\\Puzzlegame_rework\\MyPuzzleGame\\MyPuzzleGame.csproj": {}
   },
   "projects": {
-    "D:\\my_program\\realPgame\\MyPuzzleGame\\MyPuzzleGame.csproj": {
+    "F:\\AIフォルダ\\Puzzlegame_rework\\MyPuzzleGame\\MyPuzzleGame.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\my_program\\realPgame\\MyPuzzleGame\\MyPuzzleGame.csproj",
+        "projectUniqueName": "F:\\AIフォルダ\\Puzzlegame_rework\\MyPuzzleGame\\MyPuzzleGame.csproj",
         "projectName": "MyPuzzleGame",
-        "projectPath": "D:\\my_program\\realPgame\\MyPuzzleGame\\MyPuzzleGame.csproj",
+        "projectPath": "F:\\AIフォルダ\\Puzzlegame_rework\\MyPuzzleGame\\MyPuzzleGame.csproj",
         "packagesPath": "C:\\Users\\mami\\.nuget\\packages\\",
-        "outputPath": "D:\\my_program\\realPgame\\MyPuzzleGame\\obj\\",
+        "outputPath": "F:\\AIフォルダ\\Puzzlegame_rework\\MyPuzzleGame\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\mami\\AppData\\Roaming\\NuGet\\NuGet.Config",

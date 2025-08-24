@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "+0gnJ3oeFKQ=",
+  "dgSpecHash": "TaOG21HCJAY=",
   "success": true,
-  "projectFilePath": "D:\\my_program\\realPgame\\MyPuzzleGame\\MyPuzzleGame.csproj",
+  "projectFilePath": "F:\\AIフォルダ\\Puzzlegame_rework\\MyPuzzleGame\\MyPuzzleGame.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\mami\\.nuget\\packages\\opentk\\4.9.4\\opentk.4.9.4.nupkg.sha512",
     "C:\\Users\\mami\\.nuget\\packages\\opentk.audio.openal\\4.9.4\\opentk.audio.openal.4.9.4.nupkg.sha512",

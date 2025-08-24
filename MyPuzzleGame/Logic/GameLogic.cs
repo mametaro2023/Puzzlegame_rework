@@ -27,6 +27,8 @@ namespace MyPuzzleGame.Logic
         private Mino? _currentMino;
         private double _fallTimer = Core.GameConfig.FallIntervalMs;
         private bool _isSoftDropping = false;
+        private readonly List<Mino> _nextMinos = new();
+        private const int NextMinoCount = 2;
         
         private bool _disposed = false;
 
@@ -41,6 +43,13 @@ namespace MyPuzzleGame.Logic
         {
             lock (_stateLock)
             {
+                _nextMinos.Clear();
+                // Pre-populate the queue with the current mino + next minos
+                for (int i = 0; i < NextMinoCount + 1; i++)
+                {
+                    _nextMinos.Add(CreateNewMino());
+                }
+                
                 _stateTimer = 200.0;
                 _currentState = GameState.Spawning;
             }
@@ -51,6 +60,15 @@ namespace MyPuzzleGame.Logic
             lock (_stateLock)
             {
                 return _currentMino;
+            }
+        }
+
+        public List<Mino> GetNextMinos()
+        {
+            lock (_stateLock)
+            {
+                // Return a copy to avoid threading issues
+                return new List<Mino>(_nextMinos);
             }
         }
 
@@ -257,9 +275,22 @@ namespace MyPuzzleGame.Logic
 
         private void SpawnMino()
         {
-            _currentMino = new Mino(Core.GameConfig.FieldWidth - 4, 0, _validBlockTypes[_random.Next(_validBlockTypes.Length)], _validBlockTypes[_random.Next(_validBlockTypes.Length)], _validBlockTypes[_random.Next(_validBlockTypes.Length)]);
+            _currentMino = _nextMinos[0];
+            _nextMinos.RemoveAt(0);
+            _nextMinos.Add(CreateNewMino());
+
             _fallTimer = Core.GameConfig.FallIntervalMs;
             _isSoftDropping = false;
+        }
+
+        private Mino CreateNewMino()
+        {
+            // Center the new mino horizontally.
+            int spawnX = Core.GameConfig.FieldWidth / 2 - 1;
+            return new Mino(spawnX, 0, 
+                _validBlockTypes[_random.Next(_validBlockTypes.Length)], 
+                _validBlockTypes[_random.Next(_validBlockTypes.Length)], 
+                _validBlockTypes[_random.Next(_validBlockTypes.Length)]);
         }
 
         private bool CheckCollision(int x, int y)

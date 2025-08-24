@@ -232,5 +232,62 @@ namespace MyPuzzleGame.Rendering
                 _blockRenderer.RenderBlock(x, y, block.Type);
             }
         }
+
+        public void RenderNextMinos(List<Mino> nextMinos)
+        {
+            if (_gpuRenderer == null || nextMinos == null || nextMinos.Count == 0) return;
+
+            // --- Next 1 (Main Display) ---
+            Mino next1 = nextMinos[0];
+            if (next1 == null) return;
+
+            int blockSize = Core.GameConfig.BlockSize;
+            int boxWidth = (int)(blockSize * 3.5);
+            int boxHeight = (int)(blockSize * 4.5);
+            int boxX = _field.X - boxWidth - 20; // 20px margin from field
+            int boxY = _field.Y;
+
+            // Draw border and background for Next1
+            _gpuRenderer.RenderQuad(boxX - 2, boxY - 2, boxWidth + 4, boxHeight + 4, new Vector3(0.1f, 0.1f, 0.1f)); // Border
+            _gpuRenderer.RenderQuad(boxX, boxY, boxWidth, boxHeight, new Vector3(0.2f, 0.2f, 0.2f)); // Background
+
+            // Center the mino inside the box
+            int minoX = boxX + (boxWidth - blockSize) / 2;
+            int minoY = boxY + (boxHeight - blockSize * 3) / 2;
+
+            // Draw the Next1 mino
+            for (int j = 0; j < next1.Blocks.Length; j++)
+            {
+                Block block = next1.Blocks[j];
+                if (block.Type == Core.BlockType.None) continue;
+
+                int blockPixelY = minoY + j * blockSize;
+                if (GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
+                {
+                    _gpuRenderer.RenderBlock(minoX, blockPixelY, blockSize, gpuColors.Main);
+                }
+            }
+
+            // --- Next 2 (Smaller, Greyscale Display) ---
+            if (nextMinos.Count > 1)
+            {
+                Mino next2 = nextMinos[1];
+                if (next2 == null) return;
+
+                int smallBlockSize = (int)(blockSize * 0.6f);
+                int smallMinoX = boxX + 5; // Inside the main box, left corner
+                int smallMinoY = boxY + boxHeight - (smallBlockSize * 3) - 5; // Inside the main box, bottom corner
+                var greyColor = new Vector3(0.5f, 0.5f, 0.5f); // Grey color for Next2
+
+                for (int j = 0; j < next2.Blocks.Length; j++)
+                {
+                    Block block = next2.Blocks[j];
+                    if (block.Type == Core.BlockType.None) continue;
+
+                    int blockPixelY = smallMinoY + j * smallBlockSize;
+                    _gpuRenderer.RenderBlock(smallMinoX, blockPixelY, smallBlockSize, greyColor);
+                }
+            }
+        }
     }
 }

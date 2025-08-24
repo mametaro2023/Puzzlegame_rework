@@ -172,6 +172,12 @@ namespace MyPuzzleGame
                 {
                     _fieldRenderer?.RenderMino(currentMino);
                 }
+
+                var nextMinos = _gameLogic?.GetNextMinos();
+                if (nextMinos != null)
+                {
+                    _fieldRenderer?.RenderNextMinos(nextMinos);
+                }
             }
         }
 
