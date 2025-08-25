@@ -324,7 +324,7 @@ namespace MyPuzzleGame.Logic
         private Mino CreateNewMino()
         {
             // Center the new mino horizontally.
-            int spawnX = Core.GameConfig.FieldWidth / 2 - 1;
+            int spawnX = Core.GameConfig.FieldWidth / 2;
             return new Mino(spawnX, 0, 
                 _validBlockTypes[_random.Next(_validBlockTypes.Length)], 
                 _validBlockTypes[_random.Next(_validBlockTypes.Length)], 
