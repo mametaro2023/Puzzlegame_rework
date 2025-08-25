@@ -38,6 +38,14 @@ namespace MyPuzzleGame.Entities
             Blocks[1].Type = Blocks[2].Type;
             Blocks[2].Type = topType;
         }
+
+        public void RotateDown()
+        {
+            var bottomType = Blocks[2].Type;
+            Blocks[2].Type = Blocks[1].Type;
+            Blocks[1].Type = Blocks[0].Type;
+            Blocks[0].Type = bottomType;
+        }
     }
 
     public class GameField

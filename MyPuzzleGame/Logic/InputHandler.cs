@@ -22,70 +22,88 @@ namespace MyPuzzleGame.Logic
 
         public void HandleInput(KeyboardState keyboardState, double deltaTime)
         {
-            // Up key for rotation
-            if (keyboardState.IsKeyPressed(Keys.Up))
-            {
-                _gameLogic.RotateMino();
-            }
+            var gameState = _gameLogic.CurrentState;
 
-            // Space for hard drop
-            if (keyboardState.IsKeyPressed(Keys.Space))
+            if (gameState == GameLogic.GameState.MinoFalling)
             {
-                _gameLogic.HardDrop();
-            }
+                // Up key for rotation
+                if (keyboardState.IsKeyPressed(Keys.Up))
+                {
+                    _gameLogic.RotateMino();
+                }
 
-            // Down key for soft drop
-            bool isDownPressed = keyboardState.IsKeyDown(Keys.Down);
-            if (isDownPressed && !_wasDownPressed)
-            {
-                _gameLogic.StartSoftDrop();
-            }
-            else if (!isDownPressed && _wasDownPressed)
-            {
-                _gameLogic.StopSoftDrop();
-            }
-            _wasDownPressed = isDownPressed;
+                // Space for hard drop
+                if (keyboardState.IsKeyPressed(Keys.Space))
+                {
+                    _gameLogic.HardDrop();
+                }
 
-            // Left key with DAS
-            if (keyboardState.IsKeyPressed(Keys.Left))
-            {
-                _gameLogic.MoveMino(-1, 0);
-                _isLeftHeld = true;
-                _leftDasTimer = DasDelay;
-            }
-            else if (keyboardState.IsKeyDown(Keys.Left) && _isLeftHeld)
-            {
-                _leftDasTimer -= deltaTime;
-                if (_leftDasTimer <= 0)
+                // Down key for soft drop
+                bool isDownPressed = keyboardState.IsKeyDown(Keys.Down);
+                if (isDownPressed && !_wasDownPressed)
+                {
+                    _gameLogic.StartSoftDrop();
+                }
+                else if (!isDownPressed && _wasDownPressed)
+                {
+                    _gameLogic.StopSoftDrop();
+                }
+                _wasDownPressed = isDownPressed;
+
+                // Left key with DAS
+                if (keyboardState.IsKeyPressed(Keys.Left))
                 {
                     _gameLogic.MoveMino(-1, 0);
-                    _leftDasTimer = DasInterval;
+                    _isLeftHeld = true;
+                    _leftDasTimer = DasDelay;
                 }
-            }
-            else
-            {
-                _isLeftHeld = false;
-            }
+                else if (keyboardState.IsKeyDown(Keys.Left) && _isLeftHeld)
+                {
+                    _leftDasTimer -= deltaTime;
+                    if (_leftDasTimer <= 0)
+                    {
+                        _gameLogic.MoveMino(-1, 0);
+                        _leftDasTimer = DasInterval;
+                    }
+                }
+                else
+                {
+                    _isLeftHeld = false;
+                }
 
-            // Right key with DAS
-            if (keyboardState.IsKeyPressed(Keys.Right))
-            {
-                _gameLogic.MoveMino(1, 0);
-                _isRightHeld = true;
-                _rightDasTimer = DasDelay;
-            }
-            else if (keyboardState.IsKeyDown(Keys.Right) && _isRightHeld)
-            {
-                _rightDasTimer -= deltaTime;
-                if (_rightDasTimer <= 0)
+                // Right key with DAS
+                if (keyboardState.IsKeyPressed(Keys.Right))
                 {
                     _gameLogic.MoveMino(1, 0);
-                    _rightDasTimer = DasInterval;
+                    _isRightHeld = true;
+                    _rightDasTimer = DasDelay;
+                }
+                else if (keyboardState.IsKeyDown(Keys.Right) && _isRightHeld)
+                {
+                    _rightDasTimer -= deltaTime;
+                    if (_rightDasTimer <= 0)
+                    {
+                        _gameLogic.MoveMino(1, 0);
+                        _rightDasTimer = DasInterval;
+                    }
+                }
+                else
+                {
+                    _isRightHeld = false;
                 }
             }
-            else
+            else if (gameState == GameLogic.GameState.MinoLocked || gameState == GameLogic.GameState.MatchCheck)
             {
-                _isRightHeld = false;
+                if (keyboardState.IsKeyPressed(Keys.Up))
+                {
+                    _gameLogic.RotateNextMinoUp();
+                }
+
+                if (keyboardState.IsKeyPressed(Keys.Down))
+                {
+                    _gameLogic.RotateNextMinoDown();
+                }
+                _wasDownPressed = false; // Reset soft drop state
             }
         }
     }

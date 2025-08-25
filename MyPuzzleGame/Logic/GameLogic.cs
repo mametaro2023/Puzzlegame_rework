@@ -8,7 +8,7 @@ namespace MyPuzzleGame.Logic
 {
     public class GameLogic : IDisposable
     {
-        private enum GameState
+        public enum GameState
         {
             MinoFalling,
             MinoLocked,
@@ -38,6 +38,17 @@ namespace MyPuzzleGame.Logic
         public GameLogic(GameField gameField)
         {
             _gameField = gameField ?? throw new ArgumentNullException(nameof(gameField));
+        }
+
+        public GameState CurrentState
+        {
+            get
+            {
+                lock (_stateLock)
+                {
+                    return _currentState;
+                }
+            }
         }
 
         public void Start()
@@ -356,6 +367,34 @@ namespace MyPuzzleGame.Logic
             {
                 if (_currentState != GameState.MinoFalling || _currentMino == null) return;
                 _currentMino.RotateUp();
+            }
+        }
+
+        public void RotateNextMinoUp()
+        {
+            lock (_stateLock)
+            {
+                if (_currentState == GameState.MinoLocked || _currentState == GameState.MatchCheck)
+                {
+                    if (_nextMinos.Count > 0)
+                    {
+                        _nextMinos[0].RotateUp();
+                    }
+                }
+            }
+        }
+
+        public void RotateNextMinoDown()
+        {
+            lock (_stateLock)
+            {
+                if (_currentState == GameState.MinoLocked || _currentState == GameState.MatchCheck)
+                {
+                    if (_nextMinos.Count > 0)
+                    {
+                        _nextMinos[0].RotateDown();
+                    }
+                }
             }
         }
 
