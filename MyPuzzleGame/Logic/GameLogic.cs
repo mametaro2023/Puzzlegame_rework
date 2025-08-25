@@ -14,7 +14,8 @@ namespace MyPuzzleGame.Logic
             MinoLocked,
             MatchCheck, 
             BlocksAnimating,
-            Spawning
+            Spawning,
+            GameOver
         }
 
         private readonly GameField _gameField;
@@ -100,7 +101,7 @@ namespace MyPuzzleGame.Logic
             {
                 _stateTimer -= deltaTime;
 
-                switch (_currentState)
+                                switch (_currentState)
                 {
                     case GameState.MinoFalling:
                         UpdateMinoFall(deltaTime);
@@ -145,9 +146,14 @@ namespace MyPuzzleGame.Logic
                     case GameState.Spawning:
                         if (_stateTimer <= 0)
                         {
-                            SpawnMino();
-                            _currentState = GameState.MinoFalling;
+                            if (SpawnMino())
+                            {
+                                _currentState = GameState.MinoFalling;
+                            }
                         }
+                        break;
+                    case GameState.GameOver:
+                        // Do nothing
                         break;
                 }
 
@@ -322,14 +328,23 @@ namespace MyPuzzleGame.Logic
 
         
 
-        private void SpawnMino()
+        private bool SpawnMino()
         {
-            _currentMino = _nextMinos[0];
+            var minoToSpawn = _nextMinos[0];
+            if (CheckCollision(minoToSpawn, minoToSpawn.X, minoToSpawn.LogicalY))
+            {
+                _currentState = GameState.GameOver;
+                _currentMino = null;
+                return false; // Game over
+            }
+
+            _currentMino = minoToSpawn;
             _nextMinos.RemoveAt(0);
             _nextMinos.Add(CreateNewMino());
 
             _fallTimer = Core.GameConfig.FallIntervalMs;
             _isSoftDropping = false;
+            return true; // Success
         }
 
         private Mino CreateNewMino()
@@ -342,14 +357,19 @@ namespace MyPuzzleGame.Logic
                 _validBlockTypes[_random.Next(_validBlockTypes.Length)]);
         }
 
-        private bool CheckCollision(int x, int y)
+        private bool CheckCollision(Mino mino, int x, int y)
         {
-            if (_currentMino == null) return true;
-            for (int i = 0; i < _currentMino.Blocks.Length; i++)
+            if (mino == null) return true;
+            for (int i = 0; i < mino.Blocks.Length; i++)
             {
-                if (_gameField.IsCollision(x, y - (_currentMino.Blocks.Length - 1 - i))) return true;
+                if (_gameField.IsCollision(x, y - (mino.Blocks.Length - 1 - i))) return true;
             }
             return false;
+        }
+
+        private bool CheckCollision(int x, int y)
+        {
+            return CheckCollision(_currentMino, x, y);
         }
 
         public void MoveMino(int deltaX, int deltaY)

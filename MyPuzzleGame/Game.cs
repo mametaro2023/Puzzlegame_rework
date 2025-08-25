@@ -167,11 +167,12 @@ namespace MyPuzzleGame
 
             lock (_renderLock)
             {
+                var gameState = _gameLogic?.CurrentState ?? GameLogic.GameState.Spawning;
                 // Get the list of falling blocks from the logic
                 var fallingBlocks = _gameLogic?.GetFallingBlocks() ?? Enumerable.Empty<AnimatingBlock>();
 
                 // Render the field and the falling blocks
-                _fieldRenderer?.RenderField(fallingBlocks);
+                _fieldRenderer?.RenderField(fallingBlocks, gameState);
                 
                 // Render the currently controlled mino
                 var currentMino = _gameLogic?.GetCurrentMino();
@@ -180,10 +181,10 @@ namespace MyPuzzleGame
                     _fieldRenderer?.RenderMino(currentMino);
                 }
 
-                var nextMinos = _gameLogic?.GetNextMinos();
+                                var nextMinos = _gameLogic?.GetNextMinos();
                 if (nextMinos != null)
                 {
-                    _fieldRenderer?.RenderNextMinos(nextMinos);
+                    _fieldRenderer?.RenderNextMinos(nextMinos, gameState);
                 }
             }
         }

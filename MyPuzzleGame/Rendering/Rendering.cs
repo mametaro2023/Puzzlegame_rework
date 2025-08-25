@@ -4,6 +4,7 @@ using System.Drawing;
 using MyPuzzleGame.Core;
 using MyPuzzleGame.Entities;
 using MyPuzzleGame.Graphics;
+using MyPuzzleGame.Logic;
 
 namespace MyPuzzleGame.Rendering
 {
@@ -23,7 +24,7 @@ namespace MyPuzzleGame.Rendering
             _gpuRenderer = gpuRenderer;
         }
 
-        public void RenderBlock(int gridX, int gridY, Core.BlockType blockType)
+        public void RenderBlock(int gridX, int gridY, Core.BlockType blockType, bool isGameOver = false)
         {
             if (blockType == Core.BlockType.None) return;
 
@@ -31,6 +32,23 @@ namespace MyPuzzleGame.Rendering
             {
                 int pixelX = _field.X + gridX * Core.GameConfig.BlockSize;
                 int pixelY = _field.Y + gridY * Core.GameConfig.BlockSize;
+
+                if (isGameOver)
+                {
+                    var greyColor = new Vector3(0.3f, 0.3f, 0.3f);
+                    if (_gpuRenderer != null)
+                    {
+                        _gpuRenderer.RenderBlock(pixelX, pixelY, Core.GameConfig.BlockSize, greyColor);
+                    }
+                    else
+                    {
+                        // CPU fallback
+                        RenderBlockBackground(pixelX, pixelY, (Color.FromArgb(76, 76, 76), Color.FromArgb(76, 76, 76), Color.FromArgb(76, 76, 76)));
+                        RenderBlockBorder(pixelX, pixelY, (Color.Gray, Color.LightGray, Color.DarkGray));
+                    }
+                    return;
+                }
+
 
                 if (_gpuRenderer != null && GPUBlockColors.Colors.TryGetValue(blockType, out var gpuColors))
                 {
@@ -137,7 +155,7 @@ namespace MyPuzzleGame.Rendering
             _blockRenderer.SetGPURenderer(gpuRenderer);
         }
 
-        public void RenderField(IEnumerable<AnimatingBlock> fallingBlocks)
+        public void RenderField(IEnumerable<AnimatingBlock> fallingBlocks, GameLogic.GameState gameState)
         {
             try
             {
@@ -146,7 +164,7 @@ namespace MyPuzzleGame.Rendering
                 RenderGrid();
                 
                 // Only render blocks that exist to minimize processing
-                RenderBlocks();
+                RenderBlocks(gameState);
 
                 // Render animating blocks
                 foreach (var block in fallingBlocks)
@@ -223,17 +241,21 @@ namespace MyPuzzleGame.Rendering
             }
         }
 
-        private void RenderBlocks()
+        private void RenderBlocks(GameLogic.GameState gameState)
         {
+            bool isGameOver = gameState == GameLogic.GameState.GameOver;
             foreach (var (x, y, block) in _field.GetAllBlocks())
             {
-                _blockRenderer.RenderBlock(x, y, block.Type);
+                _blockRenderer.RenderBlock(x, y, block.Type, isGameOver);
             }
         }
 
-        public void RenderNextMinos(List<Mino> nextMinos)
+        public void RenderNextMinos(List<Mino> nextMinos, GameLogic.GameState gameState)
         {
             if (_gpuRenderer == null || nextMinos == null || nextMinos.Count == 0) return;
+
+            bool isGameOver = gameState == GameLogic.GameState.GameOver;
+            var gameOverGreyColor = new Vector3(0.3f, 0.3f, 0.3f);
 
             // --- Next 1 (Main Display) ---
             Mino next1 = nextMinos[0];
@@ -260,7 +282,11 @@ namespace MyPuzzleGame.Rendering
                 if (block.Type == Core.BlockType.None) continue;
 
                 int blockPixelY = minoY + j * blockSize;
-                if (GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
+                if (isGameOver)
+                {
+                    _gpuRenderer.RenderBlock(minoX, blockPixelY, blockSize, gameOverGreyColor);
+                }
+                else if (GPUBlockColors.Colors.TryGetValue(block.Type, out var gpuColors))
                 {
                     _gpuRenderer.RenderBlock(minoX, blockPixelY, blockSize, gpuColors.Main);
                 }
@@ -283,7 +309,7 @@ namespace MyPuzzleGame.Rendering
                     if (block.Type == Core.BlockType.None) continue;
 
                     int blockPixelY = smallMinoY + j * smallBlockSize;
-                    _gpuRenderer.RenderBlock(smallMinoX, blockPixelY, smallBlockSize, greyColor);
+                    _gpuRenderer.RenderBlock(smallMinoX, blockPixelY, smallBlockSize, isGameOver ? gameOverGreyColor : greyColor);
                 }
             }
         }
