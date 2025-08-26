@@ -18,6 +18,7 @@ namespace MyPuzzleGame
         private FieldRenderer? _fieldRenderer;
         private GameLogic? _gameLogic;
         private GPURenderer? _gpuRenderer;
+        private SoundManager? _soundManager;
         private readonly object _renderLock = new();
         private bool _initialized = false;
         private InputHandler? _inputHandler;
@@ -67,6 +68,7 @@ namespace MyPuzzleGame
         {
             try
             {
+                _soundManager?.Dispose();
                 _gameLogic?.Dispose();
                 _gpuRenderer?.Dispose();
                 SystemUtils.NativeMethods.TimeEndPeriod(1);
@@ -151,9 +153,20 @@ namespace MyPuzzleGame
             _gpuRenderer = new GPURenderer();
             _gpuRenderer.Initialize(ClientSize.X, ClientSize.Y);
 
+            _soundManager = new SoundManager();
+            try
+            {
+                _soundManager.LoadSound("move", "Sounds/move.wav");
+            }
+            catch (Exception ex)
+            {
+                HandleError("loading move sound", ex);
+                // Continue without sound
+            }
+
             _gameField = new GameField(ClientSize.X, ClientSize.Y);
             _fieldRenderer = new FieldRenderer(_gameField, _gpuRenderer);
-            _gameLogic = new GameLogic(_gameField);
+            _gameLogic = new GameLogic(_gameField, _soundManager);
             
             _gameLogic.Start();
             _inputHandler = new InputHandler(_gameLogic);

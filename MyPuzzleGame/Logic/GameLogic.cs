@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MyPuzzleGame.Core;
 using MyPuzzleGame.Entities;
+using MyPuzzleGame.SystemUtils;
 
 namespace MyPuzzleGame.Logic
 {
@@ -19,6 +20,7 @@ namespace MyPuzzleGame.Logic
         }
 
         private readonly GameField _gameField;
+        private readonly SoundManager? _soundManager;
         private readonly Random _random = new();
         private readonly object _stateLock = new();
         private readonly List<AnimatingBlock> _fallingBlocks = new();
@@ -31,14 +33,17 @@ namespace MyPuzzleGame.Logic
         private bool _isSoftDropping = false;
         private readonly List<Mino> _nextMinos = new();
         private const int NextMinoCount = 2;
+        private float _nextMinoSlideAnimation = 1.0f; // 0.0 (start) to 1.0 (end)
+        public float NextMinoSlideProgress => _nextMinoSlideAnimation;
         
         private bool _disposed = false;
 
         private static readonly BlockType[] _validBlockTypes = ((BlockType[])Enum.GetValues(typeof(BlockType))).Where(t => t != BlockType.None).ToArray();
 
-        public GameLogic(GameField gameField)
+        public GameLogic(GameField gameField, SoundManager? soundManager)
         {
             _gameField = gameField ?? throw new ArgumentNullException(nameof(gameField));
+            _soundManager = soundManager;
         }
 
         public GameState CurrentState
@@ -157,6 +162,7 @@ namespace MyPuzzleGame.Logic
                         break;
                 }
 
+                UpdateNextMinoAnimation(deltaTime);
                 UpdateVisuals(deltaTime);
             }
         }
@@ -182,6 +188,18 @@ namespace MyPuzzleGame.Logic
                 {
                     PlaceMino();
                     break; 
+                }
+            }
+        }
+
+        private void UpdateNextMinoAnimation(double deltaTime)
+        {
+            if (_nextMinoSlideAnimation < 1.0f)
+            {
+                _nextMinoSlideAnimation += (float)(deltaTime / 200.0); // 200ms for animation
+                if (_nextMinoSlideAnimation > 1.0f)
+                {
+                    _nextMinoSlideAnimation = 1.0f;
                 }
             }
         }
@@ -341,6 +359,7 @@ namespace MyPuzzleGame.Logic
             _currentMino = minoToSpawn;
             _nextMinos.RemoveAt(0);
             _nextMinos.Add(CreateNewMino());
+            _nextMinoSlideAnimation = 0.0f;
 
             _fallTimer = Core.GameConfig.FallIntervalMs;
             _isSoftDropping = false;
@@ -467,6 +486,7 @@ namespace MyPuzzleGame.Logic
             {
                 _currentMino.X = newX;
                 _currentMino.LogicalY = newY;
+                if (deltaX != 0) _soundManager?.PlaySound("move");
                 return true;
             }
             return false;

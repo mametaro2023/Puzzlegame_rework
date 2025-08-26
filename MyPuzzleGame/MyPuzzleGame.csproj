@@ -11,4 +11,17 @@
     <PackageReference Include="OpenTK" Version="4.9.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="libs\openal32.dll">
+      <Link>openal32.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Sounds\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
