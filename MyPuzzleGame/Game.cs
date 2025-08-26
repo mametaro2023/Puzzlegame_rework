@@ -157,6 +157,7 @@ namespace MyPuzzleGame
             try
             {
                 _soundManager.LoadSound("move", "Sounds/move.wav");
+                _soundManager.LoadSound("lock", "Sounds/drop.wav");
             }
             catch (Exception ex)
             {

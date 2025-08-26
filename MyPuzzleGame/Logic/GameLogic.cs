@@ -495,6 +495,9 @@ namespace MyPuzzleGame.Logic
         private void PlaceMino()
         {
             if (_currentMino == null) return;
+
+            _soundManager?.PlaySound("lock");
+
             for (int i = 0; i < _currentMino.Blocks.Length; i++)
             {
                 int gridX = _currentMino.X;
