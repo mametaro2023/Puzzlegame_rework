@@ -300,6 +300,11 @@ namespace MyPuzzleGame.Logic
 
         private void ClearBlocks(HashSet<(int, int)> blocksToClear)
         {
+            if (blocksToClear.Count > 0)
+            {
+                _soundManager?.PlaySound("clear");
+            }
+
             foreach (var (x, y) in blocksToClear)
             {
                 _gameField.SetBlock(x, y, null);
