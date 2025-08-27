@@ -1,6 +1,7 @@
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Mathematics;
-using System.Text;
+using System.Drawing;
+using System.Drawing.Imaging;
 using MyPuzzleGame.Core;
 
 namespace MyPuzzleGame.Rendering
@@ -97,14 +98,12 @@ namespace MyPuzzleGame.Rendering
     public class GPURenderer : IDisposable
     {
         private ShaderProgram? _blockShader;
-        private ShaderProgram? _textShader;
-        private int _blockVAO, _blockVBO;
-        private int _textVAO, _textVBO;
+        private ShaderProgram? _uiShader; // Renamed from _textShader for clarity
+        private int _quadVAO, _quadVBO; // Renamed from _blockVAO, _blockVBO
         private Matrix4 _projectionMatrix;
         private bool _disposed = false;
 
-        // Block vertex data (position + color)
-        private readonly float[] _blockVertices = new float[]
+        private readonly float[] _quadVertices = new float[]
         {
             // Position (x, y)    // UV coords
             0.0f, 0.0f,           0.0f, 0.0f,
@@ -113,7 +112,7 @@ namespace MyPuzzleGame.Rendering
             0.0f, 1.0f,           0.0f, 1.0f
         };
 
-        private readonly uint[] _blockIndices = new uint[]
+        private readonly uint[] _quadIndices = new uint[]
         {
             0, 1, 2,
             2, 3, 0
@@ -138,7 +137,6 @@ namespace MyPuzzleGame.Rendering
 
         public void UpdateProjection(int windowWidth, int windowHeight)
         {
-            // Use left-top origin coordinate system to match CPU rendering
             _projectionMatrix = Matrix4.CreateOrthographicOffCenter(0, windowWidth, windowHeight, 0, -1.0f, 1.0f);
         }
 
@@ -166,135 +164,140 @@ in vec2 TexCoord;
 
 uniform vec3 uColor;
 uniform float uBrightness;
+uniform sampler2D uTexture;
+uniform bool uUseTexture;
 
 out vec4 FragColor;
 
 void main()
 {
-    // Flat color
+    vec4 texColor = texture(uTexture, TexCoord);
     vec3 finalColor = uColor * uBrightness;
-    FragColor = vec4(finalColor, 1.0);
+    if (uUseTexture) {
+        FragColor = texColor * vec4(finalColor, 1.0);
+    } else {
+        FragColor = vec4(finalColor, 1.0);
+    }
 }";
 
-            string textVertexShader = @"
-#version 330 core
-layout (location = 0) in vec2 aPosition;
-
-uniform mat4 uProjection;
-uniform vec2 uPosition;
-uniform vec2 uSize;
-
-void main()
-{
-    vec2 pos = aPosition * uSize + uPosition;
-    gl_Position = uProjection * vec4(pos, 0.0, 1.0);
-}";
-
-            string textFragmentShader = @"
+            string uiFragmentShader = @"
 #version 330 core
 uniform vec3 uColor;
-
 out vec4 FragColor;
-
 void main()
 {
     FragColor = vec4(uColor, 1.0);
 }";
 
             _blockShader = new ShaderProgram(blockVertexShader, blockFragmentShader);
-            _textShader = new ShaderProgram(textVertexShader, textFragmentShader);
+            _uiShader = new ShaderProgram(blockVertexShader, uiFragmentShader);
         }
 
         private void InitializeBuffers()
         {
-            // Block rendering setup
-            _blockVAO = GL.GenVertexArray();
-            _blockVBO = GL.GenBuffer();
-            int blockEBO = GL.GenBuffer();
+            _quadVAO = GL.GenVertexArray();
+            _quadVBO = GL.GenBuffer();
+            int quadEBO = GL.GenBuffer();
 
-            GL.BindVertexArray(_blockVAO);
+            GL.BindVertexArray(_quadVAO);
 
-            GL.BindBuffer(BufferTarget.ArrayBuffer, _blockVBO);
-            GL.BufferData(BufferTarget.ArrayBuffer, _blockVertices.Length * sizeof(float), _blockVertices, BufferUsageHint.StaticDraw);
+            GL.BindBuffer(BufferTarget.ArrayBuffer, _quadVBO);
+            GL.BufferData(BufferTarget.ArrayBuffer, _quadVertices.Length * sizeof(float), _quadVertices, BufferUsageHint.StaticDraw);
 
-            GL.BindBuffer(BufferTarget.ElementArrayBuffer, blockEBO);
-            GL.BufferData(BufferTarget.ElementArrayBuffer, _blockIndices.Length * sizeof(uint), _blockIndices, BufferUsageHint.StaticDraw);
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, quadEBO);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, _quadIndices.Length * sizeof(uint), _quadIndices, BufferUsageHint.StaticDraw);
 
-            // Position attribute
             GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 0);
             GL.EnableVertexAttribArray(0);
 
-            // UV attribute
             GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float, false, 4 * sizeof(float), 2 * sizeof(float));
             GL.EnableVertexAttribArray(1);
 
-            // Text rendering setup (simple quad)
-            _textVAO = GL.GenVertexArray();
-            _textVBO = GL.GenBuffer();
-
-            float[] textVertices = new float[]
-            {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                1.0f, 1.0f,
-                0.0f, 1.0f
-            };
-
-            GL.BindVertexArray(_textVAO);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, _textVBO);
-            GL.BufferData(BufferTarget.ArrayBuffer, textVertices.Length * sizeof(float), textVertices, BufferUsageHint.StaticDraw);
-
-            GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), 0);
-            GL.EnableVertexAttribArray(0);
-
             GL.BindVertexArray(0);
+        }
+
+        public int LoadTexture(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new FileNotFoundException("Texture file not found", filePath);
+            }
+
+            int textureId = GL.GenTexture();
+            GL.BindTexture(TextureTarget.Texture2D, textureId);
+
+            using (var bmp = new Bitmap(filePath))
+            {
+                bmp.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, bmp.Width, bmp.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+                bmp.UnlockBits(data);
+            }
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.Repeat);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.Repeat);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+
+            return textureId;
         }
 
         public void RenderBlock(int x, int y, int size, Vector3 color, float brightness = 1.0f)
         {
             if (_blockShader == null) return;
-
             _blockShader.Use();
-
-            // Create model matrix for position and scale
             Matrix4 model = Matrix4.CreateScale(size, size, 1.0f) * Matrix4.CreateTranslation(x, y, 0.0f);
-            
             _blockShader.SetMatrix4("uProjection", _projectionMatrix);
             _blockShader.SetMatrix4("uModel", model);
             _blockShader.SetVector3("uColor", color);
             _blockShader.SetFloat("uBrightness", brightness);
+            _blockShader.SetInt("uUseTexture", 0); // false
 
-            GL.BindVertexArray(_blockVAO);
-            GL.DrawElements(PrimitiveType.Triangles, _blockIndices.Length, DrawElementsType.UnsignedInt, 0);
+            GL.BindVertexArray(_quadVAO);
+            GL.DrawElements(PrimitiveType.Triangles, _quadIndices.Length, DrawElementsType.UnsignedInt, 0);
         }
 
         public void RenderQuad(int x, int y, int width, int height, Vector3 color)
         {
-            if (_textShader == null) return;
+            if (_uiShader == null) return;
+            _uiShader.Use();
+            Matrix4 model = Matrix4.CreateScale(width, height, 1.0f) * Matrix4.CreateTranslation(x, y, 0.0f);
+            _uiShader.SetMatrix4("uProjection", _projectionMatrix);
+            _uiShader.SetMatrix4("uModel", model);
+            _uiShader.SetVector3("uColor", color);
 
-            _textShader.Use();
-            _textShader.SetMatrix4("uProjection", _projectionMatrix);
-            _textShader.SetVector3("uColor", color);
-            _textShader.SetVector2("uPosition", new Vector2(x, y));
-            _textShader.SetVector2("uSize", new Vector2(width, height));
-
-            GL.BindVertexArray(_textVAO);
-            GL.DrawArrays(PrimitiveType.TriangleFan, 0, 4);
+            GL.BindVertexArray(_quadVAO);
+            GL.DrawElements(PrimitiveType.Triangles, _quadIndices.Length, DrawElementsType.UnsignedInt, 0);
         }
 
+        public void RenderTexturedQuad(int x, int y, int width, int height, int textureId)
+        {
+            if (_blockShader == null) return;
+            _blockShader.Use();
+
+            GL.ActiveTexture(TextureUnit.Texture0);
+            GL.BindTexture(TextureTarget.Texture2D, textureId);
+
+            Matrix4 model = Matrix4.CreateScale(width, height, 1.0f) * Matrix4.CreateTranslation(x, y, 0.0f);
+            _blockShader.SetMatrix4("uProjection", _projectionMatrix);
+            _blockShader.SetMatrix4("uModel", model);
+            _blockShader.SetVector3("uColor", Vector3.One); // Use white as base color for texture
+            _blockShader.SetFloat("uBrightness", 1.0f);
+            _blockShader.SetInt("uTexture", 0);
+            _blockShader.SetInt("uUseTexture", 1); // true
+
+            GL.BindVertexArray(_quadVAO);
+            GL.DrawElements(PrimitiveType.Triangles, _quadIndices.Length, DrawElementsType.UnsignedInt, 0);
+        }
 
         public void Dispose()
         {
             if (!_disposed)
             {
                 _blockShader?.Dispose();
-                _textShader?.Dispose();
-
-                GL.DeleteVertexArray(_blockVAO);
-                GL.DeleteBuffer(_blockVBO);
-                GL.DeleteVertexArray(_textVAO);
-                GL.DeleteBuffer(_textVBO);
-
+                _uiShader?.Dispose();
+                GL.DeleteVertexArray(_quadVAO);
+                GL.DeleteBuffer(_quadVBO);
                 _disposed = true;
             }
         }
@@ -302,10 +305,8 @@ void main()
 
     public static class GPUBlockColors
     {
-        // New stylish, flat color palette
         public static readonly Dictionary<Core.BlockType, (Vector3 Main, Vector3 Light, Vector3 Dark)> Colors = new()
         {
-            // Main, Light, and Dark are the same for a flat look.
             [Core.BlockType.Red] = (new Vector3(255f/255f, 59f/255f, 48f/255f), new Vector3(255f/255f, 59f/255f, 48f/255f), new Vector3(255f/255f, 59f/255f, 48f/255f)),
             [Core.BlockType.Green] = (new Vector3(52f/255f, 199f/255f, 89f/255f), new Vector3(52f/255f, 199f/255f, 89f/255f), new Vector3(52f/255f, 199f/255f, 89f/255f)),
             [Core.BlockType.Blue] = (new Vector3(0f/255f, 122f/255f, 255f/255f), new Vector3(0f/255f, 122f/255f, 255f/255f), new Vector3(0f/255f, 122f/255f, 255f/255f)),
