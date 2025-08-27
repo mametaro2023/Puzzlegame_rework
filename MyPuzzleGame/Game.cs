@@ -3,12 +3,14 @@ using OpenTK.Windowing.Common;
 using OpenTK.Graphics.OpenGL;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using System.Diagnostics;
+using System.IO;
 using MyPuzzleGame.Core;
 using MyPuzzleGame.Entities;
 using MyPuzzleGame.Logic;
 using MyPuzzleGame.Rendering;
 using MyPuzzleGame.SystemUtils;
 using System.Linq;
+using System.Drawing;
 
 namespace MyPuzzleGame
 {
@@ -22,6 +24,15 @@ namespace MyPuzzleGame
         private readonly object _renderLock = new();
         private bool _initialized = false;
         private InputHandler? _inputHandler;
+
+        // UI State
+        private bool _isSettingsOpen = false;
+        private Rectangle _settingsButtonRect;
+        private Rectangle _muteButtonRect;
+        private Rectangle _volumeSliderRect;
+        private Rectangle _volumeSliderHandleRect;
+        private bool _isDraggingVolume = false;
+        private UIRenderer? _uiRenderer;
         
         // FPS and frame limiting
         private int _frameCount = 0;
@@ -91,12 +102,71 @@ namespace MyPuzzleGame
                 {
                     _gameField?.UpdatePosition(ClientSize.X, ClientSize.Y);
                     _gpuRenderer?.UpdateProjection(ClientSize.X, ClientSize.Y);
+
+                    // Update UI element positions
+                    int settingsButtonSize = 40;
+                    _settingsButtonRect = new Rectangle(ClientSize.X - settingsButtonSize - 10, 10, settingsButtonSize, settingsButtonSize);
+                    _muteButtonRect = new Rectangle(ClientSize.X - 60, 60, 50, 40);
+                    _volumeSliderRect = new Rectangle(ClientSize.X - 30, 125, 20, 150);
+                    UpdateVolumeSliderHandle();
                 }
             }
             catch (Exception ex)
             {
                 HandleError("resize", ex);
             }
+        }
+
+        protected override void OnMouseDown(MouseButtonEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button == MouseButton.Left)
+            {
+                var mousePosition = new Point((int)MouseState.X, (int)MouseState.Y);
+
+                if (_settingsButtonRect.Contains(mousePosition))
+                {
+                    _isSettingsOpen = !_isSettingsOpen;
+                }
+                else if (_isSettingsOpen)
+                {
+                    if (_muteButtonRect.Contains(mousePosition))
+                    {
+                        _soundManager?.ToggleMute();
+                    }
+                    else if (_volumeSliderRect.Contains(mousePosition) || _volumeSliderHandleRect.Contains(mousePosition))
+                    {
+                        _isDraggingVolume = true;
+                        UpdateVolumeFromMouse(MouseState.Y);
+                    }
+                }
+            }
+        }
+
+        protected override void OnMouseUp(MouseButtonEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button == MouseButton.Left)
+            {
+                _isDraggingVolume = false;
+            }
+        }
+
+        protected override void OnMouseMove(MouseMoveEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (_isDraggingVolume)
+            {
+                UpdateVolumeFromMouse(e.Position.Y);
+            }
+        }
+
+        private void UpdateVolumeFromMouse(float mouseY)
+        {
+            float volume = 1.0f - ((mouseY - _volumeSliderRect.Y) / (float)_volumeSliderRect.Height);
+            volume = Math.Clamp(volume, 0.0f, 1.0f);
+            _soundManager?.SetVolume(volume);
+            UpdateVolumeSliderHandle();
         }
 
         protected override void OnUpdateFrame(FrameEventArgs e)
@@ -153,16 +223,26 @@ namespace MyPuzzleGame
             _gpuRenderer = new GPURenderer();
             _gpuRenderer.Initialize(ClientSize.X, ClientSize.Y);
 
+            _uiRenderer = new UIRenderer(_gpuRenderer);
+
+            // Initialize UI element rectangles
+            int settingsButtonSize = 40;
+            _settingsButtonRect = new Rectangle(ClientSize.X - settingsButtonSize - 10, 10, settingsButtonSize, settingsButtonSize);
+            _muteButtonRect = new Rectangle(ClientSize.X - 160, 60, 150, 40);
+            _volumeSliderRect = new Rectangle(ClientSize.X - 160, 110, 150, 20);
+            UpdateVolumeSliderHandle();
+
             _soundManager = new SoundManager();
             try
             {
-                _soundManager.LoadSound("move", "Sounds/move.wav");
-                _soundManager.LoadSound("lock", "Sounds/drop.wav");
-                _soundManager.LoadSound("clear", "Sounds/1combo.wav");
+                string soundDir = Path.Combine(AppContext.BaseDirectory, "Sounds");
+                _soundManager.LoadSound("move", Path.Combine(soundDir, "move.wav"));
+                _soundManager.LoadSound("lock", Path.Combine(soundDir, "drop.wav"));
+                _soundManager.LoadSound("clear", Path.Combine(soundDir, "1combo.wav"));
             }
             catch (Exception ex)
             {
-                HandleError("loading move sound", ex);
+                HandleError("loading sounds", ex);
                 // Continue without sound
             }
 
@@ -201,6 +281,26 @@ namespace MyPuzzleGame
                 {
                     _fieldRenderer?.RenderNextMinos(nextMinos, gameState);
                 }
+            }
+
+            // Render UI
+            _uiRenderer?.RenderSettingsIcon(_settingsButtonRect);
+            if (_isSettingsOpen)
+            {
+                _uiRenderer?.RenderButton(_muteButtonRect, "Mute", _soundManager?.IsMuted() ?? false);
+                _uiRenderer?.RenderSlider(_volumeSliderRect, _volumeSliderHandleRect);
+            }
+        }
+
+        private void UpdateVolumeSliderHandle()
+        {
+            if (_soundManager != null)
+            {
+                int handleWidth = 30;
+                int handleHeight = 20;
+                int handleX = _volumeSliderRect.X + (_volumeSliderRect.Width - handleWidth) / 2;
+                int handleY = _volumeSliderRect.Y + _volumeSliderRect.Height - handleHeight - (int)((_volumeSliderRect.Height - handleHeight) * _soundManager.GetVolume());
+                _volumeSliderHandleRect = new Rectangle(handleX, handleY, handleWidth, handleHeight);
             }
         }
 

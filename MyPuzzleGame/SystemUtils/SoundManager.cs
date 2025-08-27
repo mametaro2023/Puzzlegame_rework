@@ -12,6 +12,8 @@ namespace MyPuzzleGame.SystemUtils
         private readonly ALContext _context;
         private readonly Dictionary<string, int> _soundBuffers = new Dictionary<string, int>();
         private bool _disposed = false;
+        private float _volume = 0.5f;
+        private bool _isMuted = false;
 
         public SoundManager()
         {
@@ -71,23 +73,18 @@ namespace MyPuzzleGame.SystemUtils
 
         public void PlaySound(string name)
         {
-            Console.WriteLine($"Attempting to play sound: {name} at default volume.");
+            if (_isMuted)
+            {
+                return;
+            }
+
             if (_soundBuffers.TryGetValue(name, out int buffer))
             {
-                ALError error = AL.GetError(); // Clear any previous errors
                 int source = AL.GenSource();
-                if (AL.GetError() != ALError.NoError) Console.WriteLine($"OpenAL Error after GenSource: {AL.GetError()}");
 
                 AL.Source(source, ALSourcei.Buffer, buffer);
-                if (AL.GetError() != ALError.NoError) Console.WriteLine($"OpenAL Error after Source Buffer: {AL.GetError()}");
-
-                AL.Source(source, ALSourcef.Gain, 1.0f); // Use default volume
-                if (AL.GetError() != ALError.NoError) Console.WriteLine($"OpenAL Error after Source Gain: {AL.GetError()}");
-
+                AL.Source(source, ALSourcef.Gain, _volume);
                 AL.SourcePlay(source);
-                if (AL.GetError() != ALError.NoError) Console.WriteLine($"OpenAL Error after SourcePlay: {AL.GetError()}");
-
-                Console.WriteLine("Sound played successfully.");
 
                 // This is not ideal for performance, but simple.
                 // A better implementation would use a pool of sources.
@@ -101,10 +98,26 @@ namespace MyPuzzleGame.SystemUtils
                     AL.DeleteSource(source);
                 });
             }
-            else
-            {
-                Console.WriteLine($"Sound not found in buffer: {name}");
-            }
+        }
+
+        public void SetVolume(float volume)
+        {
+            _volume = Math.Clamp(volume, 0.0f, 1.0f);
+        }
+
+        public float GetVolume()
+        {
+            return _volume;
+        }
+
+        public void ToggleMute()
+        {
+            _isMuted = !_isMuted;
+        }
+
+        public bool IsMuted()
+        {
+            return _isMuted;
         }
 
         private ALFormat GetSoundFormat(int channels, int bits)
