@@ -1,4 +1,5 @@
 using MyPuzzleGame.Core;
+using System.Collections.Generic;
 
 namespace MyPuzzleGame.Entities
 {
@@ -24,7 +25,7 @@ namespace MyPuzzleGame.Entities
         {
             X = x;
             LogicalY = y;
-            VisualY = y; // Initially, visual position matches logical position
+            VisualY = y;
             Blocks = new Block[3];
             Blocks[0] = new Block(b1); // Top
             Blocks[1] = new Block(b2); // Middle
@@ -53,10 +54,11 @@ namespace MyPuzzleGame.Entities
         private int _fieldX;
         private int _fieldY;
         private readonly Block?[,] _blocks;
+        private const int TotalFieldHeight = Core.GameConfig.FieldHeight + Core.GameConfig.VanishingZoneHeight;
 
         public GameField(int windowWidth, int windowHeight)
         {
-            _blocks = new Block?[Core.GameConfig.FieldWidth, Core.GameConfig.FieldHeight];
+            _blocks = new Block?[Core.GameConfig.FieldWidth, TotalFieldHeight];
             UpdatePosition(windowWidth, windowHeight);
         }
 
@@ -71,18 +73,22 @@ namespace MyPuzzleGame.Entities
         public int Width => Core.GameConfig.FieldPixelWidth;
         public int Height => Core.GameConfig.FieldPixelHeight;
 
+        private int ToGridY(int y) => y + Core.GameConfig.VanishingZoneHeight;
+
         public Block? GetBlock(int x, int y)
         {
-            if (!IsValidPosition(x, y))
+            int gridY = ToGridY(y);
+            if (!IsInternalValidPosition(x, gridY))
                 return null;
-            return _blocks[x, y];
+            return _blocks[x, gridY];
         }
 
         public void SetBlock(int x, int y, Block? block)
         {
-            if (IsValidPosition(x, y))
+            int gridY = ToGridY(y);
+            if (IsInternalValidPosition(x, gridY))
             {
-                _blocks[x, y] = block;
+                _blocks[x, gridY] = block;
             }
         }
         
@@ -92,30 +98,35 @@ namespace MyPuzzleGame.Entities
             {
                 return true;
             }
-            if (y < 0)
+            
+            int gridY = ToGridY(y);
+            if (!IsInternalValidPosition(x, gridY))
             {
-                return false;
+                // This case should ideally not be hit if the above check is correct
+                return true;
             }
-            return _blocks[x, y] != null;
+
+            return _blocks[x, gridY] != null;
         }
 
         public IEnumerable<(int x, int y, Block block)> GetAllBlocks()
         {
             for (int x = 0; x < Core.GameConfig.FieldWidth; x++)
             {
-                for (int y = 0; y < Core.GameConfig.FieldHeight; y++)
+                for (int y = 0; y < TotalFieldHeight; y++)
                 {
                     if (_blocks[x, y] != null)
                     {
-                        yield return (x, y, _blocks[x, y]!);
+                        // Convert internal grid Y back to logical Y
+                        yield return (x, y - Core.GameConfig.VanishingZoneHeight, _blocks[x, y]!);
                     }
                 }
             }
         }
 
-        private bool IsValidPosition(int x, int y)
+        private bool IsInternalValidPosition(int x, int internalY)
         {
-            return x >= 0 && x < Core.GameConfig.FieldWidth && y >= 0 && y < Core.GameConfig.FieldHeight;
+            return x >= 0 && x < Core.GameConfig.FieldWidth && internalY >= 0 && internalY < TotalFieldHeight;
         }
     }
 }

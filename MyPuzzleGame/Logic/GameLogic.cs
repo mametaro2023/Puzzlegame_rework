@@ -332,7 +332,7 @@ namespace MyPuzzleGame.Logic
             for (int x = 0; x < Core.GameConfig.FieldWidth; x++)
             {
                 int emptyRow = Core.GameConfig.FieldHeight - 1;
-                for (int y = Core.GameConfig.FieldHeight - 1; y >= 0; y--)
+                for (int y = Core.GameConfig.FieldHeight - 1; y >= -Core.GameConfig.VanishingZoneHeight; y--)
                 {
                     var block = _gameField.GetBlock(x, y);
                     if (block != null)
@@ -507,7 +507,7 @@ namespace MyPuzzleGame.Logic
             {
                 int gridX = _currentMino.X;
                 int gridY = _currentMino.LogicalY - (_currentMino.Blocks.Length - 1 - i);
-                if (gridY >= 0) _gameField.SetBlock(gridX, gridY, new Block(_currentMino.Blocks[i].Type));
+                _gameField.SetBlock(gridX, gridY, new Block(_currentMino.Blocks[i].Type));
             }
             _currentMino = null;
             _currentState = GameState.MinoLocked;

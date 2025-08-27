@@ -26,7 +26,7 @@ namespace MyPuzzleGame.Rendering
 
         public void RenderBlock(int gridX, int gridY, Core.BlockType blockType, bool isGameOver = false)
         {
-            if (blockType == Core.BlockType.None) return;
+            if (blockType == Core.BlockType.None || gridY < 0) return;
 
             try
             {
@@ -155,8 +155,13 @@ namespace MyPuzzleGame.Rendering
             _blockRenderer.SetGPURenderer(gpuRenderer);
         }
 
-        public void RenderField(IEnumerable<AnimatingBlock> fallingBlocks, GameLogic.GameState gameState)
+        public void RenderField(IEnumerable<AnimatingBlock> fallingBlocks, GameLogic.GameState gameState, Vector2i windowSize)
         {
+            GL.Enable(EnableCap.ScissorTest);
+            // OpenGL's scissor box Y is from the bottom, so we need to convert
+            int scissorY = windowSize.Y - (_field.Y + _field.Height);
+            GL.Scissor(_field.X, scissorY, _field.Width, _field.Height);
+
             try
             {
                 // Only render background and grid occasionally to reduce CPU usage
@@ -172,9 +177,9 @@ namespace MyPuzzleGame.Rendering
                     _blockRenderer.RenderFloatingBlock(block.X, block.VisualY, block.Block.Type);
                 }
             }
-            catch (Exception ex)
+            finally
             {
-                Console.WriteLine($"Error rendering field: {ex.Message}");
+                GL.Disable(EnableCap.ScissorTest);
             }
         }
         

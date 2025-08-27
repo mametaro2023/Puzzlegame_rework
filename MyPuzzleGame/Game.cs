@@ -267,7 +267,7 @@ namespace MyPuzzleGame
                 var fallingBlocks = _gameLogic?.GetFallingBlocks() ?? Enumerable.Empty<AnimatingBlock>();
 
                 // Render the field and the falling blocks
-                _fieldRenderer?.RenderField(fallingBlocks, gameState);
+                _fieldRenderer?.RenderField(fallingBlocks, gameState, ClientSize);
                 
                 // Render the currently controlled mino
                 var currentMino = _gameLogic?.GetCurrentMino();

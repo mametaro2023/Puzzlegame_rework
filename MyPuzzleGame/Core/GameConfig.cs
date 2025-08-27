@@ -17,6 +17,7 @@ namespace MyPuzzleGame.Core
         // Field Dimensions
         public const int FieldWidth = 8;
         public const int FieldHeight = 15;
+        public const int VanishingZoneHeight = 4; // Extra space above the visible field
         public const int BlockSize = 40;
 
         public static int FieldPixelWidth => FieldWidth * BlockSize;
