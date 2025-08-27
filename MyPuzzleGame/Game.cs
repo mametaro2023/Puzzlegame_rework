@@ -277,7 +277,7 @@ namespace MyPuzzleGame
                 }
 
                 // Render Gauge
-                float gaugeValue = _gameLogic.GetGaugeValue();
+                float gaugeValue = _gameLogic.GetVisualGauge();
                 _uiRenderer.RenderGauge(_gaugeRect, gaugeValue);
             }
         }
