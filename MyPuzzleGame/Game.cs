@@ -11,6 +11,7 @@ using MyPuzzleGame.Rendering;
 using MyPuzzleGame.SystemUtils;
 using System.Linq;
 using System.Drawing;
+using OpenTK.Mathematics;
 
 namespace MyPuzzleGame
 {
@@ -31,25 +32,18 @@ namespace MyPuzzleGame
         private Rectangle _muteButtonRect;
         private Rectangle _volumeSliderRect;
         private Rectangle _volumeSliderHandleRect;
+        private Rectangle _gaugeRect;
         private bool _isDraggingVolume = false;
         private UIRenderer? _uiRenderer;
         
-        // FPS and frame limiting
-        private int _frameCount = 0;
-        private double _fpsUpdateTimer = 0.0;
-        private double _currentFPS = 0.0;
-        private readonly double _targetFrameTime = 1.0 / GameConfig.TargetFPS;
-        
-        // High precision frame limiting with minimal CPU usage
         private readonly Stopwatch _frameTimer = new();
         private long _lastFrameTick = 0;
         private readonly long _targetFrameTicks;
-        // Removed unused field
 
         public Game(GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
         {
-            _targetFrameTicks = (long)(_targetFrameTime * Stopwatch.Frequency);
+            _targetFrameTicks = (long)((1.0 / GameConfig.TargetFPS) * Stopwatch.Frequency);
         }
 
         protected override void OnLoad()
@@ -65,7 +59,6 @@ namespace MyPuzzleGame
                 InitializeOpenGL();
                 InitializeGame();
                 
-                // Initialize frame timer instead
                 _initialized = true;
             }
             catch (Exception ex)
@@ -102,19 +95,27 @@ namespace MyPuzzleGame
                 {
                     _gameField?.UpdatePosition(ClientSize.X, ClientSize.Y);
                     _gpuRenderer?.UpdateProjection(ClientSize.X, ClientSize.Y);
-
-                    // Update UI element positions
-                    int settingsButtonSize = 40;
-                    _settingsButtonRect = new Rectangle(ClientSize.X - settingsButtonSize - 10, 10, settingsButtonSize, settingsButtonSize);
-                    _muteButtonRect = new Rectangle(ClientSize.X - 60, 60, 50, 40);
-                    _volumeSliderRect = new Rectangle(ClientSize.X - 30, 125, 20, 150);
-                    UpdateVolumeSliderHandle();
+                    UpdateUIElementPositions();
                 }
             }
             catch (Exception ex)
             {
                 HandleError("resize", ex);
             }
+        }
+
+        private void UpdateUIElementPositions()
+        {
+            if (_gameField == null) return;
+
+            int settingsButtonSize = 40;
+            _settingsButtonRect = new Rectangle(ClientSize.X - settingsButtonSize - 10, 10, settingsButtonSize, settingsButtonSize);
+            _muteButtonRect = new Rectangle(ClientSize.X - 60, 60, 50, 40);
+            _volumeSliderRect = new Rectangle(ClientSize.X - 30, 125, 20, 150);
+            UpdateVolumeSliderHandle();
+
+            // Position the gauge to the right of the field
+            _gaugeRect = new Rectangle(_gameField.X + _gameField.Width + 10, _gameField.Y, 30, _gameField.Height);
         }
 
         protected override void OnMouseDown(MouseButtonEventArgs e)
@@ -174,11 +175,8 @@ namespace MyPuzzleGame
             base.OnUpdateFrame(e);
             if (KeyboardState.IsKeyDown(Keys.Escape)) Close();
 
-            // Update game logic here, driven by the main loop
-            _gameLogic?.Update(e.Time * 1000.0); // e.Time is in seconds, logic uses milliseconds
-
+            _gameLogic?.Update(e.Time * 1000.0);
             _inputHandler?.HandleInput(KeyboardState, e.Time * 1000.0);
-            UpdateFPS(e.Time);
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
@@ -190,8 +188,6 @@ namespace MyPuzzleGame
                 base.OnRenderFrame(e);
                 RenderGame();
                 SwapBuffers();
-
-                // Minimal CPU usage frame limiter
                 MinimalCpuFrameLimit();
             }
             catch (Exception ex)
@@ -202,10 +198,9 @@ namespace MyPuzzleGame
 
         private void InitializeOpenGL()
         {
-            GL.ClearColor(GameConfig.BackgroundColor);
+            GL.ClearColor(GameConfig.BackgroundColor.R / 255f, GameConfig.BackgroundColor.G / 255f, GameConfig.BackgroundColor.B / 255f, 1.0f);
             GL.Enable(EnableCap.Blend);
             GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-            
             UpdateViewport();
         }
 
@@ -216,21 +211,13 @@ namespace MyPuzzleGame
 
         private void InitializeGame()
         {
-            // Completely disable OpenTK's internal frame limiting
             VSync = VSyncMode.Off;
-            UpdateFrequency = 0; // No internal update limiting
+            UpdateFrequency = 0;
 
             _gpuRenderer = new GPURenderer();
             _gpuRenderer.Initialize(ClientSize.X, ClientSize.Y);
 
             _uiRenderer = new UIRenderer(_gpuRenderer);
-
-            // Initialize UI element rectangles
-            int settingsButtonSize = 40;
-            _settingsButtonRect = new Rectangle(ClientSize.X - settingsButtonSize - 10, 10, settingsButtonSize, settingsButtonSize);
-            _muteButtonRect = new Rectangle(ClientSize.X - 160, 60, 150, 40);
-            _volumeSliderRect = new Rectangle(ClientSize.X - 160, 110, 150, 20);
-            UpdateVolumeSliderHandle();
 
             _soundManager = new SoundManager();
             try
@@ -243,7 +230,6 @@ namespace MyPuzzleGame
             catch (Exception ex)
             {
                 HandleError("loading sounds", ex);
-                // Continue without sound
             }
 
             _gameField = new GameField(ClientSize.X, ClientSize.Y);
@@ -253,6 +239,7 @@ namespace MyPuzzleGame
             _gameLogic.Start();
             _inputHandler = new InputHandler(_gameLogic);
             
+            UpdateUIElementPositions();
             Console.WriteLine("High-performance GPU rendering initialized with custom frame limiter.");
         }
 
@@ -262,33 +249,36 @@ namespace MyPuzzleGame
 
             lock (_renderLock)
             {
-                var gameState = _gameLogic?.CurrentState ?? GameLogic.GameState.Spawning;
-                // Get the list of falling blocks from the logic
-                var fallingBlocks = _gameLogic?.GetFallingBlocks() ?? Enumerable.Empty<AnimatingBlock>();
+                if (_gameLogic == null || _fieldRenderer == null || _uiRenderer == null) return;
 
-                // Render the field and the falling blocks
-                _fieldRenderer?.RenderField(fallingBlocks, gameState, ClientSize);
+                var gameState = _gameLogic.CurrentState;
+                var fallingBlocks = _gameLogic.GetFallingBlocks() ?? Enumerable.Empty<AnimatingBlock>();
+
+                _fieldRenderer.RenderField(fallingBlocks, gameState, ClientSize);
                 
-                // Render the currently controlled mino
-                var currentMino = _gameLogic?.GetCurrentMino();
+                var currentMino = _gameLogic.GetCurrentMino();
                 if (currentMino != null)
                 {
-                    _fieldRenderer?.RenderMino(currentMino);
+                    _fieldRenderer.RenderMino(currentMino);
                 }
 
-                                var nextMinos = _gameLogic?.GetNextMinos();
+                var nextMinos = _gameLogic.GetNextMinos();
                 if (nextMinos != null)
                 {
-                    _fieldRenderer?.RenderNextMinos(nextMinos, gameState);
+                    _fieldRenderer.RenderNextMinos(nextMinos, gameState);
                 }
-            }
 
-            // Render UI
-            _uiRenderer?.RenderSettingsIcon(_settingsButtonRect);
-            if (_isSettingsOpen)
-            {
-                _uiRenderer?.RenderButton(_muteButtonRect, "Mute", _soundManager?.IsMuted() ?? false);
-                _uiRenderer?.RenderSlider(_volumeSliderRect, _volumeSliderHandleRect);
+                // Render UI
+                _uiRenderer.RenderSettingsIcon(_settingsButtonRect);
+                if (_isSettingsOpen)
+                {
+                    _uiRenderer.RenderButton(_muteButtonRect, "Mute", _soundManager?.IsMuted() ?? false);
+                    _uiRenderer.RenderSlider(_volumeSliderRect, _volumeSliderHandleRect);
+                }
+
+                // Render Gauge
+                float gaugeValue = _gameLogic.GetGaugeValue();
+                _uiRenderer.RenderGauge(_gaugeRect, gaugeValue);
             }
         }
 
@@ -296,29 +286,12 @@ namespace MyPuzzleGame
         {
             if (_soundManager != null)
             {
-                int handleWidth = 30;
-                int handleHeight = 20;
-                int handleX = _volumeSliderRect.X + (_volumeSliderRect.Width - handleWidth) / 2;
-                int handleY = _volumeSliderRect.Y + _volumeSliderRect.Height - handleHeight - (int)((_volumeSliderRect.Height - handleHeight) * _soundManager.GetVolume());
-                _volumeSliderHandleRect = new Rectangle(handleX, handleY, handleWidth, handleHeight);
+                int handleWidth = 20;
+                int handleHeight = 30;
+                float sliderPos = (_volumeSliderRect.Width - handleWidth) * _soundManager.GetVolume();
+                _volumeSliderHandleRect = new Rectangle(_volumeSliderRect.X + (int)sliderPos, _volumeSliderRect.Y + (_volumeSliderRect.Height - handleHeight) / 2, handleWidth, handleHeight);
             }
         }
-
-        private void UpdateFPS(double deltaTime)
-        {
-            _frameCount++;
-            _fpsUpdateTimer += deltaTime;
-            
-            if (_fpsUpdateTimer >= 1.0)
-            {
-                _currentFPS = _frameCount / _fpsUpdateTimer;
-                Title = $"{GameConfig.WindowTitle} - {_currentFPS:F0} FPS";
-                _frameCount = 0;
-                _fpsUpdateTimer = 0.0;
-            }
-        }
-
-        
 
         private void MinimalCpuFrameLimit()
         {
@@ -332,11 +305,9 @@ namespace MyPuzzleGame
                 
                 if (remainingMs > 1.0)
                 {
-                    // Sleep for the bulk of the remaining time
                     Thread.Sleep((int)Math.Max(1, remainingMs - 0.5));
                 }
                 
-                // Use SpinWait for the final precise timing - this is more CPU friendly
                 SpinWait.SpinUntil(() => _frameTimer.ElapsedTicks - _lastFrameTick >= _targetFrameTicks);
             }
             

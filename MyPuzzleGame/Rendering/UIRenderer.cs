@@ -93,5 +93,26 @@ namespace MyPuzzleGame.Rendering
             _gpuRenderer.RenderQuad(centerX - rect.Width / 4, centerY - 1, rect.Width / 2, 2, new Vector3(0.8f, 0.8f, 0.8f));
             _gpuRenderer.RenderQuad(centerX - 1, centerY - rect.Height / 4, 2, rect.Height / 2, new Vector3(0.8f, 0.8f, 0.8f));
         }
+
+        public void RenderGauge(Rectangle rect, float percentage)
+        {
+            // Background
+            _gpuRenderer.RenderQuad(rect.X, rect.Y, rect.Width, rect.Height, new Vector3(0.2f, 0.2f, 0.2f));
+
+            // Foreground (filled part)
+            float fillHeight = rect.Height * (percentage / 100.0f);
+            int fillY = rect.Y + rect.Height - (int)fillHeight;
+
+            // Interpolate color from blue to red based on percentage
+            var color = Vector3.Lerp(new Vector3(0, 0.5f, 1), new Vector3(1, 0.2f, 0.2f), percentage / 100.0f);
+
+            _gpuRenderer.RenderQuad(rect.X, fillY, rect.Width, (int)fillHeight, color);
+
+            // Border
+            _gpuRenderer.RenderQuad(rect.X, rect.Y, 1, rect.Height, new Vector3(0.1f, 0.1f, 0.1f)); // Left
+            _gpuRenderer.RenderQuad(rect.X + rect.Width - 1, rect.Y, 1, rect.Height, new Vector3(0.1f, 0.1f, 0.1f)); // Right
+            _gpuRenderer.RenderQuad(rect.X, rect.Y, rect.Width, 1, new Vector3(0.1f, 0.1f, 0.1f)); // Top
+            _gpuRenderer.RenderQuad(rect.X, rect.Y + rect.Height - 1, rect.Width, 1, new Vector3(0.1f, 0.1f, 0.1f)); // Bottom
+        }
     }
 }

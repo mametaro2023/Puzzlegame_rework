@@ -29,13 +29,18 @@ namespace MyPuzzleGame.Logic
         private double _stateTimer = 0.0;
 
         private Mino? _currentMino;
-        private double _fallTimer = Core.GameConfig.FallIntervalMs;
+        private double _fallTimer = 0.0;
         private bool _isSoftDropping = false;
         private readonly List<Mino> _nextMinos = new();
         private const int NextMinoCount = 2;
         private float _nextMinoSlideAnimation = 1.0f; // 0.0 (start) to 1.0 (end)
         public float NextMinoSlideProgress => _nextMinoSlideAnimation;
         
+        // Gauge and Combo System
+        private float _gaugeValue = 0.0f;
+        private int _comboCount = 0;
+        private double _totalGameTime = 0.0;
+
         private bool _disposed = false;
 
         private static readonly BlockType[] _validBlockTypes = ((BlockType[])Enum.GetValues(typeof(BlockType))).Where(t => t != BlockType.None).ToArray();
@@ -57,12 +62,13 @@ namespace MyPuzzleGame.Logic
             }
         }
 
+        public float GetGaugeValue() => _gaugeValue;
+
         public void Start()
         {
             lock (_stateLock)
             {
                 _nextMinos.Clear();
-                // Pre-populate the queue with the current mino + next minos
                 for (int i = 0; i < NextMinoCount + 1; i++)
                 {
                     _nextMinos.Add(CreateNewMino());
@@ -70,6 +76,9 @@ namespace MyPuzzleGame.Logic
                 
                 _stateTimer = 200.0;
                 _currentState = GameState.Spawning;
+                _gaugeValue = 0.0f;
+                _comboCount = 0;
+                _totalGameTime = 0.0;
             }
         }
 
@@ -84,7 +93,6 @@ namespace MyPuzzleGame.Logic
         {
             lock (_stateLock)
             {
-                // Return a copy to avoid threading issues
                 return new List<Mino>(_nextMinos);
             }
         }
@@ -94,9 +102,7 @@ namespace MyPuzzleGame.Logic
         {
             lock (_stateLock)
             {
-                // Return a copy to prevent modification outside of the lock
                 return new List<AnimatingBlock>(_fallingBlocks);
-
             }
         }
 
@@ -105,8 +111,11 @@ namespace MyPuzzleGame.Logic
             lock (_stateLock)
             {
                 _stateTimer -= deltaTime;
+                if (_currentState != GameState.GameOver) {
+                    _totalGameTime += deltaTime;
+                }
 
-                                switch (_currentState)
+                switch (_currentState)
                 {
                     case GameState.MinoFalling:
                         UpdateMinoFall(deltaTime);
@@ -121,6 +130,10 @@ namespace MyPuzzleGame.Logic
                             var matches = FindMatches();
                             if (matches.Count > 0)
                             {
+                                _comboCount++;
+                                _gaugeValue += matches.Count * _comboCount * 2.0f;
+                                if (_gaugeValue >= 100.0f) { _gaugeValue = 0.0f; } // Reset gauge
+
                                 ClearBlocks(matches);
                                 StartGravityAnimation();
                                 if (_fallingBlocks.Count > 0)
@@ -135,6 +148,7 @@ namespace MyPuzzleGame.Logic
                             }
                             else
                             {
+                                _comboCount = 0; // Reset combo if no match
                                 _stateTimer = 200.0; 
                                 _currentState = GameState.Spawning;
                             }
@@ -167,6 +181,20 @@ namespace MyPuzzleGame.Logic
             }
         }
 
+        private double CalculateFallIntervalMs()
+        {
+            float baseSpeed = GameConfig.BaseFallSpeed;
+            float gaugeBonus = (_gaugeValue / 100.0f) * GameConfig.GaugeBonusSpeed;
+            float timeBonus = ((float)_totalGameTime / 60000.0f) * GameConfig.TimeBonusSpeedPerMinute;
+            float softDropBonus = _isSoftDropping ? GameConfig.SoftDropBonusSpeed : 0.0f;
+
+            float totalSpeed = baseSpeed + gaugeBonus + timeBonus + softDropBonus;
+
+            if (totalSpeed <= 0) return double.PositiveInfinity; // Avoid division by zero
+
+            return 1000.0 / totalSpeed;
+        }
+
         private void UpdateMinoFall(double deltaTime)
         {
             if (_currentMino == null) 
@@ -175,7 +203,7 @@ namespace MyPuzzleGame.Logic
                 return;
             }
 
-            double currentFallInterval = _isSoftDropping ? Core.GameConfig.SoftDropIntervalMs : Core.GameConfig.FallIntervalMs;
+            double currentFallInterval = CalculateFallIntervalMs();
             _fallTimer -= deltaTime;
             
             while (_fallTimer <= 0)
@@ -207,8 +235,8 @@ namespace MyPuzzleGame.Logic
         private void UpdateVisuals(double deltaTime)
         {
             if (_currentMino == null) return;
-            double currentFallInterval = _isSoftDropping ? Core.GameConfig.SoftDropIntervalMs : Core.GameConfig.FallIntervalMs;
-            if (_currentState == GameState.MinoFalling && currentFallInterval > 0)
+            double currentFallInterval = CalculateFallIntervalMs();
+            if (_currentState == GameState.MinoFalling && !double.IsPositiveInfinity(currentFallInterval))
             {
                 double progress = 1.0 - (_fallTimer / currentFallInterval);
                 _currentMino.VisualY = (_currentMino.LogicalY - 1) + (float)Math.Clamp(progress, 0.0, 1.0);
@@ -318,7 +346,6 @@ namespace MyPuzzleGame.Logic
                 var block = _fallingBlocks[i];
                 if (block.Update(deltaTimeInSeconds))
                 {
-                    // Animation finished, place block in grid
                     _gameField.SetBlock(block.X, (int)block.EndY, block.Block);
                     _fallingBlocks.RemoveAt(i);
                 }
@@ -339,7 +366,6 @@ namespace MyPuzzleGame.Logic
                     {
                         if (y != emptyRow)
                         {
-                            // This block needs to fall
                             _fallingBlocks.Add(new AnimatingBlock(block, x, y, emptyRow, animationDuration));
                             _gameField.SetBlock(x, y, null); // Remove from original position
                         }
@@ -348,8 +374,6 @@ namespace MyPuzzleGame.Logic
                 }
             }
         }
-
-        
 
         private bool SpawnMino()
         {
@@ -366,14 +390,13 @@ namespace MyPuzzleGame.Logic
             _nextMinos.Add(CreateNewMino());
             _nextMinoSlideAnimation = 0.0f;
 
-            _fallTimer = Core.GameConfig.FallIntervalMs;
+            _fallTimer = CalculateFallIntervalMs();
             _isSoftDropping = false;
             return true; // Success
         }
 
         private Mino CreateNewMino()
         {
-            // Center the new mino horizontally.
             int spawnX = Core.GameConfig.FieldWidth / 2;
             return new Mino(spawnX, 0, 
                 _validBlockTypes[_random.Next(_validBlockTypes.Length)], 
@@ -450,8 +473,7 @@ namespace MyPuzzleGame.Logic
                 if (!_isSoftDropping && _currentMino != null)
                 {
                     _isSoftDropping = true;
-                    double progress = 1.0 - (_fallTimer / Core.GameConfig.FallIntervalMs);
-                    _fallTimer = (1.0 - progress) * Core.GameConfig.SoftDropIntervalMs;
+                    _fallTimer = CalculateFallIntervalMs();
                 }
             }
         }
@@ -464,8 +486,7 @@ namespace MyPuzzleGame.Logic
                 if (_isSoftDropping && _currentMino != null)
                 {
                     _isSoftDropping = false;
-                    double progress = 1.0 - (_fallTimer / Core.GameConfig.SoftDropIntervalMs);
-                    _fallTimer = (1.0 - progress) * Core.GameConfig.FallIntervalMs;
+                    _fallTimer = CalculateFallIntervalMs();
                 }
             }
         }

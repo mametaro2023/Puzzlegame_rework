@@ -27,6 +27,12 @@ namespace MyPuzzleGame.Core
         public const double FallIntervalMs = 1000.0;
         public const double SoftDropIntervalMs = 50.0;
         public const double LockDelayMs = 500.0;
+
+        // Dynamic Fall Speed Settings (blocks per second)
+        public const float BaseFallSpeed = 0.5f;
+        public const float GaugeBonusSpeed = 3.0f; // Max speed bonus from gauge
+        public const float SoftDropBonusSpeed = 6.0f;
+        public const float TimeBonusSpeedPerMinute = 1.0f;
         
         // State Machine Timings
         public const double MinoLockDelay = 200.0;
