@@ -434,15 +434,27 @@ namespace MyPuzzleGame.Logic
         public void StartSoftDrop()
         {
             if (_currentState != GameState.MinoFalling || _isSoftDropping || _currentMino == null) return;
+
+            double oldInterval = CalculateFallIntervalMs();
+            double progress = (oldInterval > 0 && !double.IsPositiveInfinity(oldInterval)) ? (1.0 - (_fallTimer / oldInterval)) : 0.0;
+
             _isSoftDropping = true;
-            _fallTimer = CalculateFallIntervalMs();
+
+            double newInterval = CalculateFallIntervalMs();
+            _fallTimer = (1.0 - progress) * newInterval;
         }
 
         public void StopSoftDrop()
         {
             if (_currentState != GameState.MinoFalling || !_isSoftDropping || _currentMino == null) return;
+
+            double oldInterval = CalculateFallIntervalMs();
+            double progress = (oldInterval > 0 && !double.IsPositiveInfinity(oldInterval)) ? (1.0 - (_fallTimer / oldInterval)) : 0.0;
+
             _isSoftDropping = false;
-            _fallTimer = CalculateFallIntervalMs();
+
+            double newInterval = CalculateFallIntervalMs();
+            _fallTimer = (1.0 - progress) * newInterval;
         }
 
         public void HardDrop()
